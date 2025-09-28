@@ -1,15 +1,22 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { type NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = "force-dynamic";
 
+interface RouteParams {
+  params: {
+    id: string;
+  };
+}
+
 function parseDateRange(url: URL) {
-  const fromStr = url.searchParams.get("from");
-  const toStr = url.searchParams.get("to");
+  const fromStr = url.searchParams.get('from');
+  const toStr = url.searchParams.get('to');
   let gte: Date | undefined;
   let lte: Date | undefined;
+  
   if (fromStr) {
     const d = new Date(fromStr);
     if (!isNaN(d.getTime())) gte = d;
@@ -21,14 +28,10 @@ function parseDateRange(url: URL) {
   return { gte, lte };
 }
 
-interface Context {
-  params: {
-    id: string;
-  };
-}
-
-export async function GET(request: Request, context: Context) {
-  const { params } = context;
+export async function GET(
+  request: NextRequest,
+  context: { params: { id: string } }
+): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -37,7 +40,7 @@ export async function GET(request: Request, context: Context) {
   // @ts-expect-error id on session
   const sessionUserId: string | undefined = session.user?.id || (session.user as any)?.sub;
 
-  const id = params.id;
+  const id = context.params.id;
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
   try {
@@ -49,7 +52,7 @@ export async function GET(request: Request, context: Context) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const url = new URL(request.url);
+    const url = request.nextUrl;
     const { gte, lte } = parseDateRange(url);
     const dateFilter = gte || lte ? { date: { ...(gte ? { gte } : {}), ...(lte ? { lte } : {}) } } : {};
 

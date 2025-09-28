@@ -11,12 +11,6 @@ const nextConfig = {
   
   // Image optimization
   images: {
-    domains: [
-      'openweathermap.org',
-      'res.cloudinary.com',
-      'lh3.googleusercontent.com',
-      'avatars.githubusercontent.com'
-    ],
     remotePatterns: [
       {
         protocol: 'https',
@@ -26,17 +20,17 @@ const nextConfig = {
     minimumCacheTTL: 60, // 1 minute
   },
   
-  // Disable TypeScript checking during build
+  // TypeScript configuration
   typescript: {
     ignoreBuildErrors: true,
   },
   
-  // Disable ESLint during build
+  // ESLint configuration
   eslint: {
     ignoreDuringBuilds: true,
   },
   
-  // Environment variables that should be available on the client-side
+  // Environment variables
   env: {
     NEXT_PUBLIC_VERCEL_URL: process.env.VERCEL_URL,
     NEXT_PUBLIC_SITE_URL: process.env.VERCEL_URL 
@@ -47,24 +41,32 @@ const nextConfig = {
   // Enable SWC minification
   swcMinify: true,
   
-  // Configure page revalidation (ISR)
+  // Experimental features
   experimental: {
-    // Enable server actions
     serverActions: true,
+    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
   },
   
-  // Disable static optimization to prevent caching
-  output: 'standalone',
-  
-  // Disable static page generation cache
-  onDemandEntries: {
-    // Period (in ms) where the server will keep pages in the buffer
-    maxInactiveAge: 25 * 1000,
-    // Number of pages that should be kept simultaneously without being disposed
-    pagesBufferLength: 2,
+  // Webpack configuration
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /\.(pdf)$/,
+      use: [
+        {
+          loader: 'file-loader',
+          options: {
+            publicPath: '/_next/static/files',
+            outputPath: 'static/files',
+            name: '[name].[ext]',
+          },
+        },
+      ],
+    });
+    
+    return config;
   },
   
-  // Disable static optimization for all pages
+  // Build configuration
   generateBuildId: async () => 'build-' + Date.now(),
 };
 

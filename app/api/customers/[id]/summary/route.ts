@@ -21,7 +21,14 @@ function parseDateRange(url: URL) {
   return { gte, lte };
 }
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+interface Context {
+  params: {
+    id: string;
+  };
+}
+
+export async function GET(request: Request, context: Context) {
+  const { params } = context;
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -42,7 +49,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const url = new URL(req.url);
+    const url = new URL(request.url);
     const { gte, lte } = parseDateRange(url);
     const dateFilter = gte || lte ? { date: { ...(gte ? { gte } : {}), ...(lte ? { lte } : {}) } } : {};
 

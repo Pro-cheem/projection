@@ -7,12 +7,12 @@
     "dev:3001": "next dev -p 3001 -c ./config/next.config.js",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --ext .ts,.tsx",
+    "lint": "next lint",
     "prisma:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "node scripts/seed.js",
     "prisma:deploy": "prisma migrate deploy",
-    "vercel-build": "next build",
+    "vercel-build": "prisma generate && next build",
     "postinstall": "prisma generate"
   },
   "dependencies": {

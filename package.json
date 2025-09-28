@@ -3,16 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -c ./config/next.config.js",
-    "dev:3001": "next dev -p 3001 -c ./config/next.config.js",
-    "build": "next build -c ./config/next.config.js",
-    "start": "next start -c ./config/next.config.js",
+    "dev": "next dev --config ./config/next.config.js",
+    "dev:3001": "next dev -p 3001 --config ./config/next.config.js",
+    "build": "next build --config ./config/next.config.js",
+    "start": "next start --config ./config/next.config.js",
     "lint": "eslint . --ext .ts,.tsx",
     "prisma:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "node scripts/seed.js",
     "prisma:deploy": "prisma migrate deploy",
-    "vercel-build": "next build -c ./config/next.config.js",
+    "vercel-build": "next build --config ./config/next.config.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {

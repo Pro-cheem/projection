@@ -249,7 +249,13 @@ export default function ShopPage() {
               <button disabled={placing || cart.length===0} className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 text-sm disabled:opacity-60">
                 {placing? 'جاري الإرسال…' : 'تأكيد الطلب'}
               </button>
-              {msg && <div className="text-sm mt-1 {error? 'text-red-600':'text-green-600'}">{msg}</div>}
+              {msg && (
+                <div
+                  className={`text-sm mt-1 ${/فشل|خطأ|error|fail/i.test(msg) ? 'text-red-600' : 'text-green-600'}`}
+                >
+                  {msg}
+                </div>
+              )}
               <a href="/orders" className="block text-center text-xs underline text-blue-600">عرض الطلبات</a>
             </form>
           </div>

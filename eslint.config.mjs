@@ -28,8 +28,9 @@ export default [
     },
     settings: {
       next: {
-        rootDir: ['apps/*/'],
+        rootDir: '.',
       },
+    },
     },
   },
   {

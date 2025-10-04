@@ -53,3 +53,70 @@ export async function PATCH(_req: Request, { params }: { params: { id: string } 
     return NextResponse.json({ error: "Update failed" }, { status: 500 });
   }
 }
+
+export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const role = (session.user as any)?.role as string | undefined;
+  if (role !== "EMPLOYEE" && role !== "MANAGER" && role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const id = params.id;
+  try {
+    const journal = await prisma.journal.findUnique({
+      where: { id },
+      include: {
+        invoice: {
+          include: {
+            items: {
+              include: { product: { select: { name: true } } },
+              orderBy: { id: "asc" },
+            },
+            customer: { select: { id: true, name: true } },
+            user: { select: { id: true, name: true, email: true } },
+          },
+        },
+        customer: { select: { id: true, name: true } },
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+    if (!journal) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const response = {
+      id: journal.id,
+      date: journal.date,
+      total: Number(journal.total as any),
+      collection: Number(journal.collection as any),
+      balance: Number(journal.balance as any),
+      customer: journal.customer,
+      user: journal.user,
+      invoice: journal.invoice
+        ? {
+            id: journal.invoice.id,
+            serial: journal.invoice.serial,
+            date: journal.invoice.date,
+            total: Number(journal.invoice.total as any),
+            collection: Number(journal.invoice.collection as any),
+            balance: Number(journal.invoice.balance as any),
+            customer: journal.invoice.customer,
+            user: journal.invoice.user,
+            items: journal.invoice.items.map((it) => ({
+              id: it.id,
+              productId: it.productId,
+              productName: (it as any).product?.name || "",
+              capacity: it.capacity,
+              price: Number(it.price as any),
+              quantity: it.quantity,
+              total: Number(it.total as any),
+            })),
+          }
+        : null,
+    };
+
+    return NextResponse.json(response);
+  } catch (e) {
+    console.error("GET /api/journal/[id] error", e);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}

@@ -38,36 +38,22 @@ const nextConfig = {
       : 'http://localhost:3000',
   },
   
-  // Enable SWC minification
-  swcMinify: true,
-  
-  // Experimental features
-  experimental: {
-    serverActions: true,
-    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
-  },
+  // External packages allowed on the server runtime (Next 15)
+  serverExternalPackages: ['@prisma/client', 'bcrypt'],
   
   // Webpack configuration
   webpack: (config) => {
-    config.module.rules.push({
-      test: /\.(pdf)$/,
-      use: [
-        {
-          loader: 'file-loader',
-          options: {
-            publicPath: '/_next/static/files',
-            outputPath: 'static/files',
-            name: '[name].[ext]',
-          },
-        },
-      ],
-    });
-    
+    // Next.js handles static assets natively; no custom file-loader needed
     return config;
   },
   
   // Build configuration
   generateBuildId: async () => 'build-' + Date.now(),
+  
+  // Experimental features
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client', 'bcrypt'],
+  },
 };
 
 // Only require keys in production

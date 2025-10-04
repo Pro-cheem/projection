@@ -1,34 +1,75 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import InvoiceForm from "@/components/invoice-form";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import InvoiceForm from "@/components/invoice-form-fixed";
 import PrintButton from "@/components/print-button";
 
-export default async function InvoicePage() {
-  const session = await getServerSession(authOptions);
+export default function InvoicePage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
+  
   // @ts-expect-error custom role on session
   const role: string | undefined = session?.user?.role;
 
-  if (!session) redirect("/login?role=representative");
-  if (role !== "EMPLOYEE" && role !== "MANAGER" && role !== "ADMIN") redirect("/");
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login?role=representative");
+    } else if (status === "authenticated" && role && !["EMPLOYEE", "MANAGER", "ADMIN"].includes(role)) {
+      router.push("/");
+    }
+  }, [status, role, router]);
+
+  if (status === "loading" || !isClient) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10">
-      <div className="flex items-center justify-between gap-4 mb-4">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-semibold mb-1">Invoice Entry</h1>
-          <p className="text-sm text-muted-foreground">Select a customer, add products, and save the invoice. Totals auto-calculate.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">فاتورة بيع</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            قم بإنشاء فاتورة جديدة وإضافة المنتجات والعملاء
+          </p>
         </div>
-        <nav className="flex gap-2 text-sm items-center">
-          <a href="/stock" className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/10">Stock</a>
-          <a href="/journal" className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/10">Journal</a>
-          <a href="/customers" className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/10">Customers</a>
-          <a href="/reports" className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/10">Reports</a>
-          <PrintButton className="rounded-lg bg-emerald-600 text-white px-3 py-1.5" />
-        </nav>
+        <div className="flex flex-wrap gap-2">
+          <a 
+            href="/journal" 
+            className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            اليومية
+          </a>
+          <a 
+            href="/customers" 
+            className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            العملاء
+          </a>
+          <a 
+            href="/products" 
+            className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            المنتجات
+          </a>
+          <PrintButton className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" />
+        </div>
       </div>
-      <div className="rounded-xl border border-black/10 dark:border-white/10 p-6 bg-white dark:bg-zinc-900">
-        <InvoiceForm />
+      
+      <div className="bg-white dark:bg-gray-900 shadow-sm rounded-xl overflow-hidden">
+        <div className="p-6">
+          <InvoiceForm />
+        </div>
       </div>
     </div>
   );

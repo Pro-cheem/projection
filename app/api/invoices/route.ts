@@ -5,16 +5,16 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const InvoiceSchema = z.object({
-  serial: z.string().min(1),
+  serial: z.string().trim().min(1),
   date: z.string().optional(), // ISO date string
-  customerId: z.string().min(1),
-  collection: z.number().min(0).default(0),
+  customerId: z.string().trim().min(1),
+  collection: z.coerce.number().min(0).default(0),
   items: z.array(
     z.object({
       productId: z.string().min(1),
-      quantity: z.number().int().min(1),
+      quantity: z.coerce.number().int().min(1),
     })
-  ).min(0),
+  ).min(0).default([]),
 });
 
 export async function POST(req: Request) {
@@ -31,7 +31,9 @@ export async function POST(req: Request) {
   try { body = bodyRaw ? JSON.parse(bodyRaw) : null; } catch { body = null; }
   const parsed = InvoiceSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid invoice payload", details: parsed.error.flatten() }, { status: 400 });
+    const details = parsed.error.flatten();
+    console.error("/api/invoices invalid payload", { body, fieldErrors: details.fieldErrors });
+    return NextResponse.json({ error: "Invalid invoice payload", details }, { status: 400 });
   }
 
   const { serial, date, customerId, items, collection } = parsed.data;
@@ -40,15 +42,15 @@ export async function POST(req: Request) {
   try {
     const result = await prisma.$transaction(async (tx) => {
       // Fetch products and current stock
-      let itemsBuilt: { productId: string; capacity: string; price: number; quantity: number; total: number }[] = [];
+      let itemsBuilt: { productId: string; productName: string; capacity: string; price: number; quantity: number; total: number }[] = [];
       let total = 0;
       if (items.length > 0) {
         const productIds = items.map((i) => i.productId);
         const products = await tx.product.findMany({
           where: { id: { in: productIds } },
-          // Cast to any to tolerate prisma client not yet aware of stockQty
-          select: { id: true, capacity: true, price: true, stockQty: true } as any,
-        }) as any as Array<{ id: string; capacity: string; price: any; stockQty: number }>;
+          // Include product name for journal items
+          select: { id: true, name: true, capacity: true, price: true, stockQty: true } as any,
+        }) as any as Array<{ id: string; name: string; capacity: string; price: any; stockQty: number }>;
         if (products.length !== productIds.length) {
           throw new Error("Some products were not found");
         }
@@ -64,10 +66,18 @@ export async function POST(req: Request) {
           const t = price * qty;
           return {
             productId: i.productId,
+            productName: p.name,
             capacity: p.capacity,
             price,
             quantity: qty,
             total: t,
+          } as {
+            productId: string;
+            productName: string;
+            capacity: string;
+            price: number;
+            quantity: number;
+            total: number;
           };
         });
 
@@ -110,12 +120,11 @@ export async function POST(req: Request) {
         include: { items: true },
       });
 
-      // Decrement stock for each product
+      // Decrement stock for each product based on built items
       if (itemsBuilt.length > 0) {
-        for (const it of items) {
+        for (const it of itemsBuilt) {
           await tx.product.update({
             where: { id: it.productId },
-            // Cast data as any to avoid TS schema mismatch until prisma generate
             data: { stockQty: { decrement: it.quantity } } as any,
           });
         }
@@ -130,7 +139,7 @@ export async function POST(req: Request) {
       }
 
       // Journal entry
-      await tx.journal.create({
+      const journal = await tx.journal.create({
         data: {
           date: invoice.date,
           invoiceId: invoice.id,
@@ -142,11 +151,32 @@ export async function POST(req: Request) {
         },
       });
 
-      return { invoice, total, balance, collected };
+      // Create journal items for each invoice line (guard if client not regenerated yet)
+      if (itemsBuilt.length > 0) {
+        const jItemDelegate = (tx as any).journalItem;
+        if (jItemDelegate && typeof jItemDelegate.createMany === "function") {
+          await jItemDelegate.createMany({
+            data: itemsBuilt.map((it) => ({
+              journalId: journal.id,
+              productId: it.productId,
+              productName: it.productName,
+              capacity: it.capacity,
+              price: it.price,
+              quantity: it.quantity,
+              total: it.total,
+            })),
+          });
+        } else {
+          console.warn("JournalItem delegate is unavailable. Run prisma generate after schema migration.");
+        }
+      }
+
+      console.log("/api/invoices created", { serial: finalSerial, total, collected, balance, itemCount: itemsBuilt.length });
+      return { invoice, total, balance, collected, itemCount: itemsBuilt.length };
     });
 
     return NextResponse.json(
-      { invoiceId: result.invoice.id, total: result.total, balance: result.balance, collection: result.collected },
+      { invoiceId: result.invoice.id, serial: result.invoice.serial, total: result.total, balance: result.balance, collection: result.collected, itemCount: result.itemCount },
       { status: 201 }
     );
   } catch (e) {

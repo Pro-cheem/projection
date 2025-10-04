@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -23,30 +23,30 @@ function parseDateRange(url: URL) {
 }
 
 export async function GET(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   // @ts-expect-error custom role
   const role: string | undefined = session.user?.role;
   // @ts-expect-error id on session
   const sessionUserId: string | undefined = session.user?.id || (session.user as any)?.sub;
 
-  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  if (!id) return Response.json({ error: "Missing id" }, { status: 400 });
 
   try {
     const customer = await prisma.customer.findUnique({ where: { id }, select: { id: true, name: true, email: true, phone: true, ownerId: true, totalDebt: true } });
-    if (!customer) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!customer) return Response.json({ error: "Not found" }, { status: 404 });
 
     // Authorization: ADMIN/MANAGER or the owner rep of the customer.
     if (!(role === "ADMIN" || role === "MANAGER" || (sessionUserId && sessionUserId === customer.ownerId))) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const url = request.nextUrl;
+    const url = req.nextUrl;
     const { gte, lte } = parseDateRange(url);
     const dateFilter = gte || lte ? { date: { ...(gte ? { gte } : {}), ...(lte ? { lte } : {}) } } : {};
 
@@ -63,7 +63,7 @@ export async function GET(
       _count: { _all: true },
     });
 
-    return NextResponse.json({
+    return Response.json({
       ok: true,
       customer,
       invoices,
@@ -76,6 +76,6 @@ export async function GET(
     });
   } catch (err) {
     console.error("/api/customers/[id]/summary GET error", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return Response.json({ error: "Server error" }, { status: 500 });
   }
 }

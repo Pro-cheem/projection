@@ -10,6 +10,80 @@ function formatVal(v: string | null | undefined) {
   return v || "—";
 }
 
+// Simple CSV exporter for reps aggregates
+function exportRepsCsv(
+  employees: { id: string; name: string | null; username?: string | null; email: string | null; phone: string | null }[],
+  repAggs: Record<string, {
+    invoiceCount: number;
+    salesTotal: number | string;
+    collectionsTotal: number | string;
+    balancesTotal: number | string;
+    customerCount: number;
+    customerDebtTotal: number | string;
+  }>
+) {
+  try {
+    const headers = [
+      "ID",
+      "Name",
+      "Email",
+      "Phone",
+      "Invoices",
+      "Sales",
+      "Collections",
+      "Balances",
+      "Customers",
+      "Debt",
+    ];
+    const rows = employees.map((u) => {
+      const a = repAggs[u.id] || {
+        invoiceCount: 0,
+        salesTotal: 0,
+        collectionsTotal: 0,
+        balancesTotal: 0,
+        customerCount: 0,
+        customerDebtTotal: 0,
+      };
+      return [
+        u.id,
+        (u.name || "").replaceAll(",", " "),
+        u.email || "",
+        u.phone || "",
+        String(a.invoiceCount ?? 0),
+        String(Number(a.salesTotal || 0)),
+        String(Number(a.collectionsTotal || 0)),
+        String(Number(a.balancesTotal || 0)),
+        String(a.customerCount ?? 0),
+        String(Number(a.customerDebtTotal || 0)),
+      ];
+    });
+    const csv = [headers, ...rows]
+      .map((r) => r.map((v) => {
+        // Escape values containing commas, quotes, or newlines
+        const s = String(v ?? "");
+        if (/[",\n]/.test(s)) {
+          return '"' + s.replaceAll('"', '""') + '"';
+        }
+        return s;
+      }).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const ts = new Date().toISOString().slice(0, 10);
+    a.download = `reps-${ts}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    // best-effort; surface minimal info in console
+    console.error("Failed to export CSV", e);
+  }
+}
+
 export default function AdminUsersTable({
   requesters,
   employees,

@@ -180,23 +180,10 @@ export default function StockPage() {
                   <div className="h-3 w-1/2 bg-black/5 dark:bg-white/10 rounded" />
                   <div className="h-5 w-1/3 bg-black/5 dark:bg-white/10 rounded" />
                 </div>
-                {/* Notes for managers */}
+                {/* Notes placeholder (no product context while loading) */}
                 <div className="mt-3">
                   <div className="text-xs text-muted-foreground">Notes</div>
-                  {canEdit ? (
-                    <textarea
-                      className="w-full min-h-24 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-2 py-1 text-sm"
-                      defaultValue={p.notes || ""}
-                      placeholder="اكتب ملاحظات حول المنتج هنا…"
-                      onBlur={(e)=>{
-                        const val = e.currentTarget.value;
-                        if (val !== (p.notes || "")) onUpdate(p, { notes: val || null });
-                      }}
-                      maxLength={5000}
-                    />
-                  ) : (
-                    p.notes ? <div className="text-sm whitespace-pre-wrap">{p.notes}</div> : <div className="text-sm text-muted-foreground">—</div>
-                  )}
+                  <div className="w-full min-h-24 rounded-lg border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 animate-pulse" />
                 </div>
               </div>
             ))}

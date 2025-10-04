@@ -3,7 +3,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["fullTextSearch"]
 }
 
 datasource db {
@@ -85,6 +84,7 @@ model Product {
   images       Media[]
   invoiceItems InvoiceItem[]
   requestItems PurchaseRequestItem[]
+  journalItems JournalItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -138,6 +138,27 @@ model Journal {
   balance    Decimal
 
   createdAt DateTime @default(now())
+
+  // Per-line entries (product, capacity, price, quantity, total)
+  items     JournalItem[]
+}
+
+model JournalItem {
+  id         String   @id @default(cuid())
+  journal    Journal  @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  journalId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  String
+  productName String
+  capacity   String
+  price      Decimal
+  quantity   Int
+  total      Decimal
+
+  createdAt DateTime @default(now())
+
+  @@index([journalId])
+  @@index([productId])
 }
 
 model Media {

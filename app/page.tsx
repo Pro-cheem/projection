@@ -139,7 +139,7 @@ export default function Home() {
           </div>
           )}
         </section>
-        <section id="products" className="lg:col-span-2">
+        <section id="products" className="lg:col-span-3">
           <div className="flex items-end justify-between mb-4">
             <div>
               <h2 className="text-2xl font-semibold">Products</h2>
@@ -187,61 +187,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="new-user" className="lg:col-span-1">
-          <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 p-6 shadow-sm">
-            <h2 className="text-xl font-semibold mb-1">Request Order Authority</h2>
-            <p className="text-sm text-muted-foreground mb-6">Create your user. An admin can grant permissions.</p>
-            <form onSubmit={onSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1" htmlFor="username">Username</label>
-                <input
-                  id="username"
-                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                  value={form.username}
-                  onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
-                  minLength={3}
-                  maxLength={50}
-                  required
-                  placeholder="e.g., john_doe"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1" htmlFor="phone">Phone</label>
-                <input
-                  id="phone"
-                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                  value={form.phone}
-                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                  minLength={5}
-                  maxLength={30}
-                  required
-                  placeholder="e.g., +1 555 123 4567"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1" htmlFor="email">Email</label>
-                <input
-                  id="email"
-                  type="email"
-                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                  value={form.email}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  required
-                  placeholder="you@example.com"
-                />
-              </div>
-              <button
-                disabled={submitting}
-                className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {submitting ? "Submitting…" : "Create User"}
-              </button>
-            </form>
-            {message && (
-              <p className="mt-4 text-sm text-muted-foreground">{message}</p>
-            )}
-          </div>
-        </section>
+        {/* Self-signup removed; admins can create users in /admin/users */}
       </main>
 
       <footer className="border-t border-black/5 dark:border-white/10 py-8 mt-10">

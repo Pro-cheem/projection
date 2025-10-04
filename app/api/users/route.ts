@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 const createUserSchema = z.object({
   username: z.string().min(3).max(50),
@@ -10,6 +12,15 @@ const createUserSchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    // Only ADMIN can create users
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // @ts-expect-error custom role on session
+    const role: string | undefined = session.user?.role;
+    if (role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const json = await req.json();
     const parsed = createUserSchema.safeParse(json);
     if (!parsed.success) {

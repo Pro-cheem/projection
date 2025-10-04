@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import bcrypt from "bcrypt";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -40,21 +41,44 @@ export async function PATCH(req: Request) {
   }
 
   const body = await req.json().catch(() => null);
-  if (!body?.userId || !body?.role) {
-    return NextResponse.json({ error: "userId and role are required" }, { status: 400 });
+  if (!body?.userId) {
+    return NextResponse.json({ error: "userId is required" }, { status: 400 });
   }
-  const targetRole = body.role as string;
+
+  // If password present -> only MANAGER can update passwords
+  if (typeof body.password === "string" && body.password.length >= 4) {
+    if (role !== "MANAGER") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    try {
+      const passwordHash = await bcrypt.hash(String(body.password), 10);
+      const updated = await prisma.user.update({
+        where: { id: String(body.userId) },
+        data: { passwordHash },
+        select: { id: true, name: true, username: true, email: true, phone: true, role: true },
+      });
+      return NextResponse.json({ user: updated, ok: true });
+    } catch (e) {
+      console.error("PATCH /api/admin/users password error", e);
+      return NextResponse.json({ error: "Password update failed" }, { status: 500 });
+    }
+  }
+
+  // Else expect role change (allowed to ADMIN/MANAGER with restricted targets)
+  if (!body?.role) {
+    return NextResponse.json({ error: "role is required when password is not provided" }, { status: 400 });
+  }
+  const targetRole = String(body.role);
   if (![`REQUESTER`, `EMPLOYEE`].includes(targetRole)) {
     return NextResponse.json({ error: "Invalid role change" }, { status: 400 });
   }
-
   try {
     const updated = await prisma.user.update({
-      where: { id: body.userId },
+      where: { id: String(body.userId) },
       data: { role: targetRole as any },
       select: { id: true, name: true, username: true, email: true, phone: true, role: true },
     });
-    return NextResponse.json({ user: updated });
+    return NextResponse.json({ user: updated, ok: true });
   } catch (e) {
     console.error("PATCH /api/admin/users error", e);
     return NextResponse.json({ error: "Update failed" }, { status: 500 });

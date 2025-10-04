@@ -29,6 +29,10 @@ export default function ShopPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('الكل');
+  const [customer, setCustomer] = useState({ name: '', email: '', phone: '' });
+  const [cart, setCart] = useState<any[]>([]);
+  const [placing, setPlacing] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -43,7 +47,16 @@ export default function ShopPage() {
         setLoading(false);
       }
     })();
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem('cart') : null;
+      setCart(raw ? JSON.parse(raw) : []);
+    } catch {}
   }, []);
+
+  function syncCart(next: any[]) {
+    setCart(next);
+    try { window.localStorage.setItem('cart', JSON.stringify(next)); } catch {}
+  }
 
   function addToCart(p: Product, e: React.MouseEvent) {
     e.preventDefault();
@@ -64,7 +77,7 @@ export default function ShopPage() {
           qty: 1 
         });
       }
-      window.localStorage.setItem("cart", JSON.stringify(cart));
+      syncCart(cart);
       
       // Show success notification
       const notification = document.createElement('div');
@@ -150,7 +163,8 @@ export default function ShopPage() {
           <p className="mt-1 text-gray-500 dark:text-gray-400">لم يتم العثور على منتجات في هذه الفئة.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredProducts.map((product) => (
             <a 
               key={product.id} 
@@ -205,6 +219,40 @@ export default function ShopPage() {
               </div>
             </a>
           ))}
+          </div>
+          {/* Checkout panel */}
+          <div className="lg:col-span-1 sticky top-20 h-fit bg-white dark:bg-gray-900 rounded-xl border border-black/10 dark:border-white/10 p-4">
+            <h3 className="text-lg font-semibold mb-3">إتمام الشراء</h3>
+            <form onSubmit={placeOrder} className="space-y-3">
+              <div>
+                <label className="block text-xs mb-1">الاسم</label>
+                <input className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm" value={customer.name} onChange={(e)=>setCustomer(c=>({...c, name: e.target.value}))} required />
+              </div>
+              <div>
+                <label className="block text-xs mb-1">البريد الإلكتروني</label>
+                <input type="email" className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm" value={customer.email} onChange={(e)=>setCustomer(c=>({...c, email: e.target.value}))} required />
+              </div>
+              <div>
+                <label className="block text-xs mb-1">رقم الهاتف</label>
+                <input className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm" value={customer.phone} onChange={(e)=>setCustomer(c=>({...c, phone: e.target.value}))} required />
+              </div>
+              <div className="pt-2 border-t border-black/5 dark:border-white/10">
+                <div className="flex items-center justify-between text-sm">
+                  <span>عناصر السلة</span>
+                  <span>{cart.reduce((s,i)=>s+Number(i.qty||0),0)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span>الإجمالي</span>
+                  <span className="font-semibold">{total.toLocaleString(undefined,{style:'currency',currency:'EGP'})}</span>
+                </div>
+              </div>
+              <button disabled={placing || cart.length===0} className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 text-sm disabled:opacity-60">
+                {placing? 'جاري الإرسال…' : 'تأكيد الطلب'}
+              </button>
+              {msg && <div className="text-sm mt-1 {error? 'text-red-600':'text-green-600'}">{msg}</div>}
+              <a href="/orders" className="block text-center text-xs underline text-blue-600">عرض الطلبات</a>
+            </form>
+          </div>
         </div>
       )}
     </div>

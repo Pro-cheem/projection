@@ -42,8 +42,8 @@ export default async function AdminUsersPage() {
       <h1 className="text-3xl font-semibold mb-2">Users</h1>
       <p className="text-sm text-muted-foreground mb-6">Approve customers as Representatives (employees) or keep them as customers.</p>
 
-      {/* Admin create new user */}
-      <AdminNewUserForm />
+      {/* Manager-only create new user */}
+      {role === "MANAGER" && <AdminNewUserForm />}
 
       {(() => { const egp = new Intl.NumberFormat("en-EG", { style: "currency", currency: "EGP" }); return (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">

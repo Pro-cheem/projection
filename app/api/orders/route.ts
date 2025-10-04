@@ -45,6 +45,14 @@ function buildTransport() {
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  // @ts-expect-error custom id on session
+  const userId: string | undefined = session.user?.id || (session.user as any)?.sub;
+  if (!userId) {
+    return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+  }
   let body: ReqBody | null = null;
   try { 
     body = await req.json(); 
@@ -56,8 +64,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid items" }, { status: 400 });
   }
   
-  if (!body.customer?.email) {
-    return NextResponse.json({ error: "Customer email is required" }, { status: 400 });
+  if (!body.customer?.name || !body.customer?.email || !body.customer?.phone) {
+    return NextResponse.json({ error: "Customer name, email and phone are required" }, { status: 400 });
   }
 
   try {
@@ -75,13 +83,28 @@ export async function POST(req: Request) {
       if ((p.stockQty ?? 0) <= 0) return NextResponse.json({ error: `Product out of stock: ${p.name}` }, { status: 400 });
     }
 
-    const user = session?.user?.email 
-      ? await ensureRequester(session.user.email as string, session.user.name as string | undefined) 
-      : await ensureRequester(body.customer.email, body.customer.name, body.customer.phone);
+    // Ensure a Customer owned by the current user
+    const emailLc = String(body.customer.email).toLowerCase();
+    let customer = await prisma.customer.findFirst({ where: { ownerId: userId, email: emailLc } });
+    if (!customer) {
+      customer = await prisma.customer.create({
+        data: {
+          ownerId: userId,
+          name: body.customer.name!,
+          email: emailLc,
+          phone: body.customer.phone!,
+          totalDebt: 0,
+        },
+      });
+    } else {
+      // keep customer info fresh
+      customer = await prisma.customer.update({ where: { id: customer.id }, data: { name: body.customer.name!, phone: body.customer.phone! } });
+    }
 
     const created = await prisma.purchaseRequest.create({
       data: {
-        requesterId: user.id,
+        requesterId: userId,
+        customerId: customer.id,
         note: body.note || null,
         items: {
           create: body.items.map((it) => ({
@@ -107,7 +130,7 @@ export async function POST(req: Request) {
           from: process.env.SMTP_FROM || toEmail,
           to: toEmail,
           subject: `New Order #${created.id}`,
-          text: `New order received from ${user.email} (${user.name || "-"}).\n\nItems:\n${lines}\n\nNote: ${created.note || "-"}`,
+          text: `New order received by user ${String(session.user?.email || session.user?.name || userId)} for customer ${customer.name} <${customer.email}>.\n\nItems:\n${lines}\n\nNote: ${created.note || "-"}`,
         });
       } catch (emailError) {
         console.error("Failed to send order email:", emailError);
@@ -126,18 +149,20 @@ export async function GET(req: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  
-  // @ts-expect-error custom role
+  // @ts-expect-error custom
   const role: string | undefined = session.user?.role;
-  if (!(role === "ADMIN" || role === "MANAGER")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  // @ts-expect-error id present
+  const userId: string | undefined = session.user?.id || (session.user as any)?.sub;
   
   const url = new URL(req.url);
   const fromStr = url.searchParams.get("from");
   const toStr = url.searchParams.get("to");
   
   const where: any = {};
+  if (!(role === "ADMIN" || role === "MANAGER")) {
+    // Regular users: only their own orders
+    where.requesterId = userId || "__none__";
+  }
   if (fromStr || toStr) {
     where.createdAt = {};
     if (fromStr) { 

@@ -42,6 +42,7 @@ export default function ProductDetailPage() {
   const [savingProps, setSavingProps] = useState(false);
   const [featuresText, setFeaturesText] = useState<string>("");
   const [usageText, setUsageText] = useState<string>("");
+  const [compositionText, setCompositionText] = useState<string>("");
 
   // @ts-expect-error custom role on session
   const role: string | undefined = session?.user?.role;
@@ -65,6 +66,7 @@ export default function ProductDetailPage() {
         setPropsRows(rows);
         setFeaturesText(typeof propsObj.features === 'string' ? propsObj.features : "");
         setUsageText(typeof propsObj.usage === 'string' ? propsObj.usage : "");
+        setCompositionText(typeof propsObj.composition === 'string' ? propsObj.composition : "");
         setItems(json.recentItems || []);
         setActiveIdx(0);
       } catch (e: any) {
@@ -178,7 +180,7 @@ export default function ProductDetailPage() {
 
               <div className="mt-5">
                 <div className="flex items-center justify-between mb-1">
-                  <div className="text-sm text-muted-foreground">خصائص المنتج</div>
+                  <div className="text-sm text-muted-foreground">بيانات المنتج</div>
                   {canEditProps && (
                     <button
                       className="text-xs underline"
@@ -189,19 +191,37 @@ export default function ProductDetailPage() {
                 {canEditProps ? (
                   <div className="space-y-2">
                     <div>
-                      <div className="text-sm text-muted-foreground mb-1">خصائص ومميزات</div>
+                      <div className="flex items-center gap-2 mb-2 pb-1 border-b border-black/10 dark:border-white/10">
+                        <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span className="text-base font-semibold">التركيب</span>
+                      </div>
+                      <textarea
+                        className="w-full min-h-20 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm"
+                        placeholder="اكتب التركيب مثل: N 20%\nP 20%\nK 20%"
+                        value={compositionText}
+                        onChange={(e)=>setCompositionText(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-2 pb-1 border-b border-black/10 dark:border-white/10">
+                        <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span className="text-base font-semibold">الخصائص</span>
+                      </div>
                       <textarea
                         className="w-full min-h-28 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm"
-                        placeholder="اكتب الخصائص والمميزات هنا…"
+                        placeholder="اكتب الخصائص هنا…"
                         value={featuresText}
                         onChange={(e)=>setFeaturesText(e.target.value)}
                       />
                     </div>
                     <div>
-                      <div className="text-sm text-muted-foreground mb-1">طريقة وكيفية الإستعمال</div>
+                      <div className="flex items-center gap-2 mb-2 pb-1 border-b border-black/10 dark:border-white/10">
+                        <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span className="text-base font-semibold">معدلات الاستخدام</span>
+                      </div>
                       <textarea
                         className="w-full min-h-28 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm"
-                        placeholder="اكتب طريقة وكيفية الاستعمال، الرش الورقي، مع مياه الري…"
+                        placeholder="اكتب معدلات وطريقة الاستخدام (رش ورقي/مع مياه الري…)"
                         value={usageText}
                         onChange={(e)=>setUsageText(e.target.value)}
                       />
@@ -245,6 +265,7 @@ export default function ProductDetailPage() {
                               if (!k) continue;
                               obj[k] = r.value;
                             }
+                            if (compositionText.trim()) obj["composition"] = compositionText.trim(); else delete obj["composition"];
                             if (featuresText.trim()) obj["features"] = featuresText.trim(); else delete obj["features"];
                             if (usageText.trim()) obj["usage"] = usageText.trim(); else delete obj["usage"];
                             const res = await fetch("/api/products", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, properties: obj }) });
@@ -262,22 +283,88 @@ export default function ProductDetailPage() {
                   </div>
                 ) : (
                   <div className="space-y-3 text-sm">
+                    {/* التركيب */}
+                    {(product.properties?.composition || product.properties?.N || product.properties?.P || product.properties?.K) ? (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2 pb-1 border-b border-black/10 dark:border-white/10">
+                          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                          <span className="text-base font-semibold">التركيب</span>
+                        </div>
+                        {product.properties?.composition ? (
+                          <ul className="list-disc list-inside space-y-1">
+                            {String(product.properties.composition)
+                              .split(/\r?\n/)
+                              .map((l)=>l.trim())
+                              .filter((l)=>l.length>0)
+                              .map((l, i)=>{
+                                const m = l.match(/^\s*([A-Za-z\u0600-\u06FF]+)\s*:?\s*(\d+(?:[.,]\d+)?)%?\s*$/);
+                                if (m) {
+                                  const el = m[1];
+                                  const pct = m[2].replace(',', '.');
+                                  return (
+                                    <li key={i} className="flex items-center justify-between gap-4">
+                                      <span>{el}</span>
+                                      <span className="font-medium">{pct}%</span>
+                                    </li>
+                                  );
+                                }
+                                return (<li key={i}>{l}</li>);
+                              })}
+                          </ul>
+                        ) : (
+                          <ul className="list-disc list-inside space-y-1">
+                            {[
+                              product.properties?.K ? { k: 'K', v: String(product.properties.K) } : null,
+                              product.properties?.P ? { k: 'P', v: String(product.properties.P) } : null,
+                              product.properties?.N ? { k: 'N', v: String(product.properties.N) } : null,
+                            ].filter(Boolean).map((item:any, i:number)=>{
+                              const m = String(item.v).match(/^(\d+(?:[.,]\d+)?)%?$/);
+                              const pct = m ? m[1].replace(',', '.') : String(item.v);
+                              return (
+                                <li key={i} className="flex items-center justify-between gap-4">
+                                  <span>{item.k}</span>
+                                  <span className="font-medium">{pct}{m? '%':''}</span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>
+                    ) : null}
                     {product.properties?.features ? (
                       <div>
-                        <div className="font-medium mb-1">خصائص ومميزات</div>
-                        <div className="whitespace-pre-wrap leading-relaxed">{String(product.properties.features)}</div>
+                        <div className="flex items-center gap-2 mb-2 pb-1 border-b border-black/10 dark:border-white/10">
+                          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                          <span className="text-base font-semibold">الخصائص</span>
+                        </div>
+                        <ul className="list-disc list-inside leading-relaxed space-y-1">
+                          {String(product.properties.features)
+                            .split(/\r?\n/)
+                            .map((l)=>l.trim())
+                            .filter((l)=>l.length>0)
+                            .map((l, i)=> (<li key={i}>{l}</li>))}
+                        </ul>
                       </div>
                     ) : null}
                     {product.properties?.usage ? (
                       <div>
-                        <div className="font-medium mb-1">طريقة وكيفية الإستعمال</div>
-                        <div className="whitespace-pre-wrap leading-relaxed">{String(product.properties.usage)}</div>
+                        <div className="flex items-center gap-2 mb-2 pb-1 border-b border-black/10 dark:border-white/10">
+                          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                          <span className="text-base font-semibold">معدلات الاستخدام</span>
+                        </div>
+                        <ul className="list-disc list-inside leading-relaxed space-y-1">
+                          {String(product.properties.usage)
+                            .split(/\r?\n/)
+                            .map((l)=>l.trim())
+                            .filter((l)=>l.length>0)
+                            .map((l, i)=> (<li key={i}>{l}</li>))}
+                        </ul>
                       </div>
                     ) : null}
                     {/* عرض باقي الخصائص كمفاتيح/قيم */}
                     {product.properties && Object.keys(product.properties).filter(k=> k!=="features" && k!=="usage").length > 0 ? (
                       <div className="space-y-1">
-                        {Object.entries(product.properties).filter(([k])=>k!=="features" && k!=="usage").map(([k,v]) => (
+                        {Object.entries(product.properties).filter(([k])=>k!=="features" && k!=="usage" && k!=="composition" && k!=="N" && k!=="P" && k!=="K").map(([k,v]) => (
                           <div key={k} className="flex items-center justify-between gap-3">
                             <div className="text-muted-foreground">{k}</div>
                             <div className="font-medium">{String(v)}</div>

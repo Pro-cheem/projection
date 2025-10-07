@@ -1,12 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/toast-provider";
 
-export default function AdminNewUserForm() {
+export default function AdminNewUserForm({ onSuccess }: { onSuccess?: () => void }) {
   const [form, setForm] = useState({ username: "", phone: "", email: "", name: "", password: "", role: "REQUESTER" as "REQUESTER"|"EMPLOYEE"|"MANAGER"|"ADMIN" });
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const { toast } = useToast();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,9 +28,13 @@ export default function AdminNewUserForm() {
       try { data = text ? JSON.parse(text) : null; } catch {}
       if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
       setMessage("User created successfully");
+      toast({ variant: "success", title: "User created", description: `${form.username || form.name || "User"} has been created.` });
+      router.refresh();
+      onSuccess?.();
       setForm({ username: "", phone: "", email: "", name: "", password: "", role: "REQUESTER" });
     } catch (e: any) {
       setError(e?.message || "Failed to create user");
+      toast({ variant: "error", title: "Failed to create user", description: e?.message || "Unexpected error" });
     } finally {
       setSubmitting(false);
     }

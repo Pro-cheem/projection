@@ -1,18 +1,6 @@
 "use client";
 
 import AuthBar from "@/components/auth-bar";
-import dynamic from 'next/dynamic';
-
-// تحميل مكون الطقس ديناميكيًا مع تعطيل SSR
-const Weather = dynamic(() => import('@/components/weather-new'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full">
-      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-      <span className="text-sm text-white">جاري التحميل...</span>
-    </div>
-  ),
-});
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 
@@ -78,7 +66,6 @@ export default function SiteHeader() {
           </div>
           
           <div className="flex items-center gap-6">
-            <Weather />
             {isClient && currentTime && (
               <div className="hidden md:flex flex-col items-end border-r border-white/20 pr-6">
                 <div className="text-white text-sm font-medium">{formatDate(currentTime)}</div>
@@ -95,11 +82,9 @@ export default function SiteHeader() {
             <a href="/cart" className="rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">Cart</a>
             {session && (
               <>
-                {/* @ts-expect-error custom role */}
                 {((session.user as any)?.role === 'EMPLOYEE' || (session.user as any)?.role === 'MANAGER' || (session.user as any)?.role === 'ADMIN') && (
                   <a href="/invoice" className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5">New Invoice</a>
                 )}
-                {/* @ts-expect-error custom role */}
                 {((session.user as any)?.role === 'MANAGER' || (session.user as any)?.role === 'ADMIN') && (
                   <>
                     <a href="/stock" className="rounded-lg bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5">Stock</a>

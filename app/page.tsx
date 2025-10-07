@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
 import Image from "next/image";
 
 type Product = {
@@ -13,14 +12,9 @@ type Product = {
 };
 
 export default function Home() {
-  const { data: session } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [query, setQuery] = useState("");
-  const [form, setForm] = useState({ username: "", phone: "", email: "" });
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [totals, setTotals] = useState<{ invoiceCount: number; salesTotal: number; collectionsTotal: number; balancesTotal: number } | null>(null);
 
   const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -51,106 +45,12 @@ export default function Home() {
     };
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      if (!session) { setTotals(null); return; }
-      try {
-        const res = await fetch("/api/users/me/summary", { cache: "no-store" });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
-        setTotals({
-          invoiceCount: json.totals?.invoiceCount || 0,
-          salesTotal: Number(json.totals?.salesTotal || 0),
-          collectionsTotal: Number(json.totals?.collectionsTotal || 0),
-          balancesTotal: Number(json.totals?.balancesTotal || 0),
-        });
-      } catch {
-        setTotals(null);
-      }
-    })();
-  }, [session]);
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    setMessage(null);
-    try {
-      const res = await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to create user");
-      setMessage("User created successfully. You can now request an order.");
-      setForm({ username: "", phone: "", email: "" });
-    } catch (err: any) {
-      setMessage(err.message || "Something went wrong");
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  // Home page is focused on store products only; removed auth-specific quick actions
 
   return (
     <div className="min-h-screen text-foreground">
       <main className="max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {session && (
-          <section className="lg:col-span-3">
-            <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white/90 dark:bg-zinc-900/90 p-6 shadow-sm mb-8">
-              <h2 className="text-2xl font-semibold mb-2">Quick Actions</h2>
-              <p className="text-sm text-muted-foreground mb-4">Choose where you want to go.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-                <a href="/invoice" className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 text-center shadow-sm">New Invoice</a>
-                <a href="/stock" className="rounded-xl bg-teal-600 hover:bg-teal-700 text-white px-4 py-3 text-center shadow-sm">Stock</a>
-                <a href="/journal" className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white px-4 py-3 text-center shadow-sm">Journal</a>
-                <a href="/customers" className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-4 py-3 text-center shadow-sm">Customers</a>
-                <a href="/reports" className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 text-center shadow-sm">Reports</a>
-              </div>
-              {totals && (
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-6">
-                  <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-                    <div className="text-sm text-muted-foreground">عدد الفواتير</div>
-                    <div className="text-xl font-semibold">{totals.invoiceCount}</div>
-                  </div>
-                  <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-                    <div className="text-sm text-muted-foreground">إجمالي المبيعات</div>
-                    <div className="text-xl font-semibold">{totals.salesTotal.toLocaleString(undefined,{style:"currency",currency:"EGP"})}</div>
-                  </div>
-                  <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-                    <div className="text-sm text-muted-foreground">إجمالي التحصيل</div>
-                    <div className="text-xl font-semibold">{totals.collectionsTotal.toLocaleString(undefined,{style:"currency",currency:"EGP"})}</div>
-                  </div>
-                  <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-                    <div className="text-sm text-muted-foreground">إجمالي المديونيات</div>
-                    <div className="text-xl font-semibold">{totals.balancesTotal.toLocaleString(undefined,{style:"currency",currency:"EGP"})}</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-        <section className="lg:col-span-3">
-          {!session && (
-          <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white/90 dark:bg-zinc-900/90 p-6 shadow-sm mb-8">
-            <h2 className="text-2xl font-semibold mb-2">Welcome</h2>
-            <p className="text-sm text-muted-foreground mb-4">Choose your role to continue, or log in.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <a href="/login?role=customer" className="rounded-xl border border-black/10 dark:border-white/10 p-4 hover:bg-black/5 dark:hover:bg-white/10 transition">
-                <h3 className="font-medium">Customer</h3>
-                <p className="text-sm text-muted-foreground">View products only.</p>
-              </a>
-              <a href="/login?role=representative" className="rounded-xl border border-black/10 dark:border-white/10 p-4 hover:bg-black/5 dark:hover:bg-white/10 transition">
-                <h3 className="font-medium">Representative</h3>
-                <p className="text-sm text-muted-foreground">Access invoice entry after login.</p>
-              </a>
-              <a href="/login?role=manager" className="rounded-xl border border-black/10 dark:border-white/10 p-4 hover:bg-black/5 dark:hover:bg-white/10 transition">
-                <h3 className="font-medium">Manager</h3>
-                <p className="text-sm text-muted-foreground">Full permissions and dashboard.</p>
-              </a>
-            </div>
-          </div>
-          )}
-        </section>
+        {/* Store-focused homepage: removed login/roles and quick actions */}
         <section id="products" className="lg:col-span-3">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
             <div>

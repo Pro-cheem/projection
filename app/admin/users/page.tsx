@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import AdminUsersTable from "@/components/admin-users-table";
-import AdminNewUserForm from "@/components/admin-new-user-form";
+import AdminNewUserToggle from "@/components/admin-new-user-toggle";
 
 export default async function AdminUsersPage() {
   const session = await getServerSession(authOptions);
@@ -42,8 +42,8 @@ export default async function AdminUsersPage() {
       <h1 className="text-3xl font-semibold mb-2">Users</h1>
       <p className="text-sm text-muted-foreground mb-6">Approve customers as Representatives (employees) or keep them as customers.</p>
 
-      {/* Manager-only create new user */}
-      {role === "MANAGER" && <AdminNewUserForm />}
+      {/* Create new user: available to MANAGER and ADMIN */}
+      {(role === "MANAGER" || role === "ADMIN") && <AdminNewUserToggle />}
 
       {(() => { const egp = new Intl.NumberFormat("en-EG", { style: "currency", currency: "EGP" }); return (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">

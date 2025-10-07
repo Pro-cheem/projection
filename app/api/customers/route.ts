@@ -35,17 +35,33 @@ export async function POST(req: Request) {
   if (role !== "EMPLOYEE" && role !== "MANAGER" && role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  const userId = (session.user as any).id || (session as any).user?.id;
+  // Resolve current user id reliably
+  let userId: string | undefined = (session.user as any)?.id || (session as any).user?.id;
+  if (!userId) {
+    // Fallback: try resolve by email
+    const email = (session.user as any)?.email;
+    if (email) {
+      try {
+        const u = await prisma.user.findUnique({ where: { email } });
+        if (u) userId = u.id;
+      } catch {}
+    }
+  }
 
   const body = await req.json().catch(() => null);
-  if (!body?.name) return NextResponse.json({ error: "Name required" }, { status: 400 });
+  if (!body?.name || typeof body.name !== 'string' || !body.name.trim()) {
+    return NextResponse.json({ error: "Name required" }, { status: 400 });
+  }
+  if (!userId) {
+    return NextResponse.json({ error: "Unable to resolve current user" }, { status: 400 });
+  }
 
   try {
     const created = await prisma.customer.create({
       data: {
-        name: body.name,
-        email: body.email || null,
-        phone: body.phone || null,
+        name: String(body.name).trim(),
+        email: body.email ? String(body.email) : null,
+        phone: body.phone ? String(body.phone) : null,
         ownerId: userId,
       },
       select: { id: true, name: true, email: true, phone: true },

@@ -28,7 +28,8 @@ type RecentItem = {
 };
 
 export default function ProductDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams();
+  const id = (params as any)?.id as string | undefined;
   const { data: session } = useSession();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,10 +40,14 @@ export default function ProductDetailPage() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [propsRows, setPropsRows] = useState<Array<{ key: string; value: string }>>([]);
   const [savingProps, setSavingProps] = useState(false);
+  const [featuresText, setFeaturesText] = useState<string>("");
+  const [usageText, setUsageText] = useState<string>("");
 
   // @ts-expect-error custom role on session
   const role: string | undefined = session?.user?.role;
   const canEdit = useMemo(() => role === "ADMIN" || role === "MANAGER", [role]);
+  const canEditProps = useMemo(() => role === "MANAGER", [role]);
+  const canViewMovements = useMemo(() => role === "MANAGER", [role]);
 
   useEffect(() => {
     if (!id) return;
@@ -58,6 +63,8 @@ export default function ProductDetailPage() {
         const propsObj = (json.product?.properties || {}) as Record<string, any>;
         const rows = Object.entries(propsObj).map(([k, v]: [string, any]) => ({ key: k, value: String(v ?? "") }));
         setPropsRows(rows);
+        setFeaturesText(typeof propsObj.features === 'string' ? propsObj.features : "");
+        setUsageText(typeof propsObj.usage === 'string' ? propsObj.usage : "");
         setItems(json.recentItems || []);
         setActiveIdx(0);
       } catch (e: any) {
@@ -172,15 +179,33 @@ export default function ProductDetailPage() {
               <div className="mt-5">
                 <div className="flex items-center justify-between mb-1">
                   <div className="text-sm text-muted-foreground">خصائص المنتج</div>
-                  {canEdit && (
+                  {canEditProps && (
                     <button
                       className="text-xs underline"
                       onClick={()=>setPropsRows((r)=>[...r,{ key: "", value: "" }])}
                     >إضافة خاصية</button>
                   )}
                 </div>
-                {canEdit ? (
+                {canEditProps ? (
                   <div className="space-y-2">
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-1">خصائص ومميزات</div>
+                      <textarea
+                        className="w-full min-h-28 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm"
+                        placeholder="اكتب الخصائص والمميزات هنا…"
+                        value={featuresText}
+                        onChange={(e)=>setFeaturesText(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-1">طريقة وكيفية الإستعمال</div>
+                      <textarea
+                        className="w-full min-h-28 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm"
+                        placeholder="اكتب طريقة وكيفية الاستعمال، الرش الورقي، مع مياه الري…"
+                        value={usageText}
+                        onChange={(e)=>setUsageText(e.target.value)}
+                      />
+                    </div>
                     {propsRows.length === 0 && (
                       <div className="text-xs text-muted-foreground">لا توجد خصائص بعد.</div>
                     )}
@@ -220,6 +245,8 @@ export default function ProductDetailPage() {
                               if (!k) continue;
                               obj[k] = r.value;
                             }
+                            if (featuresText.trim()) obj["features"] = featuresText.trim(); else delete obj["features"];
+                            if (usageText.trim()) obj["usage"] = usageText.trim(); else delete obj["usage"];
                             const res = await fetch("/api/products", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, properties: obj }) });
                             const json = await res.json();
                             if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
@@ -234,56 +261,73 @@ export default function ProductDetailPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-1 text-sm">
-                    {product.properties && Object.keys(product.properties).length > 0 ? (
-                      Object.entries(product.properties).map(([k,v]) => (
-                        <div key={k} className="flex items-center justify-between gap-3">
-                          <div className="text-muted-foreground">{k}</div>
-                          <div className="font-medium">{String(v)}</div>
-                        </div>
-                      ))
-                    ) : (
+                  <div className="space-y-3 text-sm">
+                    {product.properties?.features ? (
+                      <div>
+                        <div className="font-medium mb-1">خصائص ومميزات</div>
+                        <div className="whitespace-pre-wrap leading-relaxed">{String(product.properties.features)}</div>
+                      </div>
+                    ) : null}
+                    {product.properties?.usage ? (
+                      <div>
+                        <div className="font-medium mb-1">طريقة وكيفية الإستعمال</div>
+                        <div className="whitespace-pre-wrap leading-relaxed">{String(product.properties.usage)}</div>
+                      </div>
+                    ) : null}
+                    {/* عرض باقي الخصائص كمفاتيح/قيم */}
+                    {product.properties && Object.keys(product.properties).filter(k=> k!=="features" && k!=="usage").length > 0 ? (
+                      <div className="space-y-1">
+                        {Object.entries(product.properties).filter(([k])=>k!=="features" && k!=="usage").map(([k,v]) => (
+                          <div key={k} className="flex items-center justify-between gap-3">
+                            <div className="text-muted-foreground">{k}</div>
+                            <div className="font-medium">{String(v)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (!product.properties?.features && !product.properties?.usage ? (
                       <div className="text-sm text-muted-foreground">لا توجد خصائص.</div>
-                    )}
+                    ) : null)}
                   </div>
                 )}
               </div>
             </aside>
           </div>
 
-          <section>
-            <h2 className="text-lg font-semibold mb-3">آخر الحركات على المنتج</h2>
-            <div className="rounded-xl border border-black/10 dark:border-white/10 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-zinc-50 dark:bg-zinc-900/50">
-                  <tr>
-                    <th className="text-right p-2">التاريخ</th>
-                    <th className="text-right p-2">الفاتورة</th>
-                    <th className="text-right p-2">العميل</th>
-                    <th className="text-right p-2">السعر</th>
-                    <th className="text-right p-2">الكمية</th>
-                    <th className="text-right p-2">الإجمالي</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.length === 0 ? (
-                    <tr><td colSpan={6} className="p-3 text-muted-foreground">لا توجد حركات.</td></tr>
-                  ) : (
-                    items.map((it) => (
-                      <tr key={it.id} className="border-t border-black/5 dark:border-white/5">
-                        <td className="p-2">{new Date(it.invoice.date).toLocaleDateString()}</td>
-                        <td className="p-2">{it.invoice.serial}</td>
-                        <td className="p-2">{it.invoice.customer.name}</td>
-                        <td className="p-2">{Number(it.price).toLocaleString(undefined,{style:"currency",currency:"EGP"})}</td>
-                        <td className="p-2">{it.quantity}</td>
-                        <td className="p-2">{Number(it.total).toLocaleString(undefined,{style:"currency",currency:"EGP"})}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
+          {canViewMovements && (
+            <section>
+              <h2 className="text-lg font-semibold mb-3">آخر الحركات على المنتج</h2>
+              <div className="rounded-xl border border-black/10 dark:border-white/10 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-zinc-50 dark:bg-zinc-900/50">
+                    <tr>
+                      <th className="text-right p-2">التاريخ</th>
+                      <th className="text-right p-2">الفاتورة</th>
+                      <th className="text-right p-2">العميل</th>
+                      <th className="text-right p-2">السعر</th>
+                      <th className="text-right p-2">الكمية</th>
+                      <th className="text-right p-2">الإجمالي</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.length === 0 ? (
+                      <tr><td colSpan={6} className="p-3 text-muted-foreground">لا توجد حركات.</td></tr>
+                    ) : (
+                      items.map((it) => (
+                        <tr key={it.id} className="border-t border-black/5 dark:border-white/5">
+                          <td className="p-2">{new Date(it.invoice.date).toLocaleDateString()}</td>
+                          <td className="p-2">{it.invoice.serial}</td>
+                          <td className="p-2">{it.invoice.customer.name}</td>
+                          <td className="p-2">{Number(it.price).toLocaleString(undefined,{style:"currency",currency:"EGP"})}</td>
+                          <td className="p-2">{it.quantity}</td>
+                          <td className="p-2">{Number(it.total).toLocaleString(undefined,{style:"currency",currency:"EGP"})}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>

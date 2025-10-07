@@ -7,7 +7,6 @@ import { authOptions } from "@/lib/auth";
 export async function GET() {
   try {
     const products = await prisma.product.findMany({
-      where: { stockQty: { gt: 0 } },
       orderBy: { name: "asc" },
       include: { images: true },
     });

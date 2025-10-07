@@ -3,6 +3,7 @@
 import AuthBar from "@/components/auth-bar";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { Menu, X } from "lucide-react";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat('ar-EG', {
@@ -29,6 +30,7 @@ export default function SiteHeader() {
   const [isClient, setIsClient] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [ordersPending, setOrdersPending] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   useEffect(() => {
     // Set isClient to true once component mounts (client-side only)
     setIsClient(true);
@@ -81,8 +83,24 @@ export default function SiteHeader() {
       window.removeEventListener("orders:updated", onUpdateOrders);
     };
   }, []);
+  // Toggle mobile menu
+  const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (mobileMenuOpen && !target.closest('.mobile-menu-container') && !target.closest('.mobile-menu-button')) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [mobileMenuOpen]);
+
   return (
-    <header className="sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-white/70 bg-white/80 dark:bg-black/50 border-b border-black/5 dark:border-white/10">
+    <header className="sticky top-0 z-50 backdrop-blur supports-[backdrop-filter]:bg-white/70 bg-white/80 dark:bg-black/50 border-b border-black/5 dark:border-white/10">
       <div className="w-full bg-gradient-to-r from-green-700 to-emerald-800 px-0">
         <div className="max-w-7xl mx-auto w-full relative">
           <a href="/" aria-label="Logo" className="block">
@@ -108,17 +126,32 @@ export default function SiteHeader() {
           )}
         </div>
       </div>
-      <div className="max-w-6xl mx-auto px-6 py-2 flex items-center justify-between gap-4">
+      {/* Mobile menu button */}
+      <div className="sm:hidden flex items-center justify-between px-4 py-2">
+        <button 
+          onClick={toggleMobileMenu}
+          className="mobile-menu-button p-2 rounded-md text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+          aria-label="Toggle menu"
+        >
+          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+        <AuthBar />
+      </div>
+
+      {/* Desktop header */}
+      <div className="max-w-6xl mx-auto px-6 py-2 hidden sm:flex items-center justify-between gap-4">
         <div className="flex items-center gap-6">
-          <nav className="hidden sm:flex gap-2 text-sm">
-            <a href="/orders" className="relative rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">
-              الطلبات
-              {ordersPending > 0 && (
-                <span className="absolute -top-2 -right-2 min-w-[1.25rem] h-5 px-1 rounded-full bg-amber-600 text-white text-[11px] leading-5 text-center">
-                  {ordersPending}
-                </span>
-              )}
-            </a>
+          <nav className="flex gap-2 text-sm">
+            {session && ((session.user as any)?.role === 'MANAGER' || (session.user as any)?.role === 'ADMIN') && (
+              <a href="/orders" className="relative rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">
+                الطلبات
+                {ordersPending > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[1.25rem] h-5 px-1 rounded-full bg-amber-600 text-white text-[11px] leading-5 text-center">
+                    {ordersPending}
+                  </span>
+                )}
+              </a>
+            )}
             <a href="/cart" className="relative rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">
               العربة
               {cartCount > 0 && (
@@ -137,23 +170,129 @@ export default function SiteHeader() {
             {session && (
               <>
                 {((session.user as any)?.role === 'EMPLOYEE' || (session.user as any)?.role === 'MANAGER' || (session.user as any)?.role === 'ADMIN') && (
-                  <a href="/invoice" className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5">فاتورة جديدة</a>
+                  <a href="/invoice" className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 whitespace-nowrap">فاتورة جديدة</a>
                 )}
                 {((session.user as any)?.role === 'MANAGER' || (session.user as any)?.role === 'ADMIN') && (
                   <>
-                    <a href="/stock" className="rounded-lg bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5">المخزون</a>
-                    <a href="/journal" className="rounded-lg bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5">اليومية</a>
-                    <a href="/customers" className="rounded-lg bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5">العملاء</a>
-                    <a href="/admin/users" className="rounded-lg bg-purple-700 hover:bg-purple-800 text-white px-3 py-1.5">المستخدمون</a>
-                    <a href="/settings" className="rounded-lg bg-zinc-800 hover:bg-zinc-900 text-white px-3 py-1.5">الإعدادات</a>
+                    <a href="/stock" className="rounded-lg bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 whitespace-nowrap">المخزون</a>
+                    <a href="/journal" className="rounded-lg bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 whitespace-nowrap">اليومية</a>
+                    <a href="/customers" className="rounded-lg bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 whitespace-nowrap">العملاء</a>
+                    <a href="/admin/users" className="rounded-lg bg-purple-700 hover:bg-purple-800 text-white px-3 py-1.5 whitespace-nowrap">المستخدمون</a>
+                    <a href="/settings" className="rounded-lg bg-zinc-800 hover:bg-zinc-900 text-white px-3 py-1.5 whitespace-nowrap">الإعدادات</a>
                   </>
                 )}
               </>
             )}
           </nav>
         </div>
-        <AuthBar />
+        <div className="hidden sm:block">
+          <AuthBar />
+        </div>
       </div>
+
+      {/* Mobile menu */}
+      {mobileMenuOpen && (
+        <div className="mobile-menu-container sm:hidden bg-white dark:bg-gray-900 shadow-lg rounded-b-lg border-t border-gray-200 dark:border-gray-700">
+          <div className="px-4 py-2 space-y-2">
+            {session && ((session.user as any)?.role === 'MANAGER' || (session.user as any)?.role === 'ADMIN') && (
+              <a 
+                href="/orders" 
+                className="block px-4 py-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white flex justify-between items-center"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span>الطلبات</span>
+                {ordersPending > 0 && (
+                  <span className="min-w-[1.5rem] h-6 flex items-center justify-center rounded-full bg-amber-600 text-white text-xs">
+                    {ordersPending}
+                  </span>
+                )}
+              </a>
+            )}
+            
+            <a 
+              href="/cart" 
+              className="block px-4 py-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white flex justify-between items-center"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <span>العربة</span>
+              {cartCount > 0 && (
+                <span className="min-w-[1.5rem] h-6 flex items-center justify-center rounded-full bg-emerald-600 text-white text-xs">
+                  {cartCount}
+                </span>
+              )}
+            </a>
+
+            {session && ((session.user as any)?.role === 'EMPLOYEE') && (
+              <>
+                <a 
+                  href={`/reps/${(session.user as any)?.id || ''}`} 
+                  className="block px-4 py-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  معاملات المندوب
+                </a>
+                <a 
+                  href="/reports" 
+                  className="block px-4 py-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  التقارير
+                </a>
+              </>
+            )}
+
+            {session && ((session.user as any)?.role === 'EMPLOYEE' || (session.user as any)?.role === 'MANAGER' || (session.user as any)?.role === 'ADMIN') && (
+              <a 
+                href="/invoice" 
+                className="block px-4 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-right"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                فاتورة جديدة
+              </a>
+            )}
+
+            {session && ((session.user as any)?.role === 'MANAGER' || (session.user as any)?.role === 'ADMIN') && (
+              <div className="space-y-2">
+                <a 
+                  href="/stock" 
+                  className="block px-4 py-3 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-right"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  المخزون
+                </a>
+                <a 
+                  href="/journal" 
+                  className="block px-4 py-3 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-right"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  اليومية
+                </a>
+                <a 
+                  href="/customers" 
+                  className="block px-4 py-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-right"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  العملاء
+                </a>
+                <a 
+                  href="/admin/users" 
+                  className="block px-4 py-3 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-right"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  المستخدمون
+                </a>
+                <a 
+                  href="/settings" 
+                  className="block px-4 py-3 rounded-lg bg-zinc-800 hover:bg-zinc-900 text-white text-right"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  الإعدادات
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 }

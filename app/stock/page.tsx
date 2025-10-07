@@ -12,6 +12,7 @@ type Product = {
   price: number | string;
   stockQty: number;
   notes?: string | null;
+  properties?: Record<string, any> | null;
   images: { id: string; url: string; blurDataUrl?: string }[];
 };
 export default function StockPage() {
@@ -20,12 +21,14 @@ export default function StockPage() {
   // @ts-expect-error custom role on session
   const role: string | undefined = session?.user?.role;
   const canEdit = useMemo(() => role === "ADMIN" || role === "MANAGER", [role]);
+  const canEditProps = useMemo(() => role === "MANAGER", [role]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", capacity: "", price: "", stockQty: "", imageUrl: "" });
+  const [form, setForm] = useState({ name: "", capacity: "", price: "", stockQty: "", imageUrl: "", composition: "", features: "", usage: "" });
   const [submitting, setSubmitting] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [propsDraft, setPropsDraft] = useState<Record<string, { composition: string; features: string; usage: string }>>({});
 
   async function load() {
     setLoading(true);
@@ -129,13 +132,20 @@ export default function StockPage() {
           price: Number(form.price),
           stockQty: Number(form.stockQty || 0),
           imageUrl: form.imageUrl || undefined,
+          properties: (() => {
+            const obj: Record<string,string> = {};
+            if (form.composition.trim()) obj["composition"] = form.composition.trim();
+            if (form.features.trim()) obj["features"] = form.features.trim();
+            if (form.usage.trim()) obj["usage"] = form.usage.trim();
+            return Object.keys(obj).length ? obj : undefined as any;
+          })(),
         }),
       });
       const resText = await res.text();
       let data: any = null;
       try { data = resText ? JSON.parse(resText) : null; } catch {}
       if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
-      setForm({ name: "", capacity: "", price: "", stockQty: "", imageUrl: "" });
+      setForm({ name: "", capacity: "", price: "", stockQty: "", imageUrl: "", composition: "", features: "", usage: "" });
       await load();
       toast({ title: "تمت الإضافة", description: "تم إضافة المنتج بنجاح", variant: "success" });
     } catch (e: any) {
@@ -162,6 +172,20 @@ export default function StockPage() {
           <input placeholder="Price" type="number" value={form.price} onChange={e=>setForm(f=>({...f,price:e.target.value}))} className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
           <input placeholder="Stock Qty" type="number" value={form.stockQty} onChange={e=>setForm(f=>({...f,stockQty:e.target.value}))} className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
           <input placeholder="Image URL (optional)" value={form.imageUrl} onChange={e=>setForm(f=>({...f,imageUrl:e.target.value}))} className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+          <div>
+            <label className="block text-xs text-muted-foreground mb-1">التركيب</label>
+            <textarea value={form.composition} onChange={e=>setForm(f=>({...f, composition: e.target.value}))} className="w-full min-h-20 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm" placeholder={"مثال:\nK 20%\nP 20%\nN 20%"} />
+          </div>
+          <div>
+            <label className="block text-xs text-muted-foreground mb-1">الخصائص</label>
+            <textarea value={form.features} onChange={e=>setForm(f=>({...f, features: e.target.value}))} className="w-full min-h-20 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm" placeholder="اكتب خصائص المنتج…" />
+          </div>
+          <div>
+            <label className="block text-xs text-muted-foreground mb-1">معدلات الاستخدام</label>
+            <textarea value={form.usage} onChange={e=>setForm(f=>({...f, usage: e.target.value}))} className="w-full min-h-20 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm" placeholder="اكتب معدلات وطريقة الاستخدام…" />
+          </div>
         </div>
         <div className="mt-3 flex items-center gap-3">
           <button onClick={onCreate} disabled={submitting || !form.name || !form.capacity || !form.price} className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm">{submitting?"Saving…":"Save"}</button>
@@ -296,6 +320,67 @@ export default function StockPage() {
                     )}
                   </div>
                 </div>
+                {canEditProps && (
+                  <div className="mt-3">
+                    <div className="flex items-center gap-2 mb-2 pb-1 border-b border-black/10 dark:border-white/10">
+                      <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                      <span className="text-base font-semibold">خصائص المنتج</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1">التركيب</label>
+                        <textarea
+                          className="w-full min-h-20 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm"
+                          placeholder={"مثال:\nK 20%\nP 20%\nN 20%"}
+                          value={(propsDraft[p.id]?.composition) ?? String((p as any).properties?.composition || "")}
+                          onChange={(e)=> setPropsDraft(prev=> ({...prev, [p.id]: { composition: e.target.value, features: prev[p.id]?.features ?? String((p as any).properties?.features || ""), usage: prev[p.id]?.usage ?? String((p as any).properties?.usage || "") }}))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1">الخصائص</label>
+                        <textarea
+                          className="w-full min-h-20 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm"
+                          placeholder="اكتب خصائص المنتج…"
+                          value={(propsDraft[p.id]?.features) ?? String((p as any).properties?.features || "")}
+                          onChange={(e)=> setPropsDraft(prev=> ({...prev, [p.id]: { composition: prev[p.id]?.composition ?? String((p as any).properties?.composition || ""), features: e.target.value, usage: prev[p.id]?.usage ?? String((p as any).properties?.usage || "") }}))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1">معدلات الاستخدام</label>
+                        <textarea
+                          className="w-full min-h-20 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-sm"
+                          placeholder="اكتب معدلات وطريقة الاستخدام…"
+                          value={(propsDraft[p.id]?.usage) ?? String((p as any).properties?.usage || "")}
+                          onChange={(e)=> setPropsDraft(prev=> ({...prev, [p.id]: { composition: prev[p.id]?.composition ?? String((p as any).properties?.composition || ""), features: prev[p.id]?.features ?? String((p as any).properties?.features || ""), usage: e.target.value }}))}
+                        />
+                      </div>
+                    </div>
+                    <div className="pt-2 text-right">
+                      <button
+                        className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-sm"
+                        onClick={async()=>{
+                          try {
+                            const draft = propsDraft[p.id] || { composition: String((p as any).properties?.composition || ""), features: String((p as any).properties?.features || ""), usage: String((p as any).properties?.usage || "") };
+                            const obj: Record<string,string> = {};
+                            if (draft.composition.trim()) obj["composition"] = draft.composition.trim();
+                            if (draft.features.trim()) obj["features"] = draft.features.trim();
+                            if (draft.usage.trim()) obj["usage"] = draft.usage.trim();
+                            const res = await fetch("/api/products", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: p.id, properties: obj }) });
+                            const txt = await res.text();
+                            let data: any = null; try { data = txt ? JSON.parse(txt) : null; } catch {}
+                            if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+                            await load();
+                            toast({ title: "تم الحفظ", description: `تم حفظ خصائص ${p.name}`, variant: "success" });
+                          } catch (e:any) {
+                            const msg = e.message || "Failed to save properties";
+                            setError(msg);
+                            toast({ title: "فشل الحفظ", description: msg, variant: "error" });
+                          }
+                        }}
+                      >حفظ الخصائص</button>
+                    </div>
+                  </div>
+                )}
                 {canEdit && (
                   <div className="mt-3">
                     <label className="text-xs text-muted-foreground block mb-1">Image</label>

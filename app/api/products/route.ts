@@ -116,6 +116,8 @@ const CreateProductSchema = z.object({
   // accept absolute or relative URLs
   imageUrl: z.string().min(1).optional(),
   imageBlurDataUrl: z.string().min(1).optional(),
+  // optional free-form properties at creation
+  properties: z.record(z.string(), z.any()).optional(),
 });
 
 export async function POST(req: Request) {
@@ -135,7 +137,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid data", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { name, capacity, price, stockQty, notes, imageUrl, imageBlurDataUrl } = parsed.data;
+  const { name, capacity, price, stockQty, notes, imageUrl, imageBlurDataUrl, properties } = parsed.data;
   try {
     const created = await prisma.product.create({
       data: {
@@ -144,6 +146,7 @@ export async function POST(req: Request) {
         price,
         stockQty,
         ...(notes ? { notes } : {}),
+        ...(properties ? { properties: properties as any } : {}),
         images: imageUrl ? { create: [{ url: imageUrl, kind: "PRODUCT", blurDataUrl: imageBlurDataUrl || undefined }] } : undefined,
       },
       include: { images: true },

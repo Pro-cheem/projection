@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 
@@ -16,10 +16,22 @@ export default function Home() {
   const { data: session } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [query, setQuery] = useState("");
   const [form, setForm] = useState({ username: "", phone: "", email: "" });
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [totals, setTotals] = useState<{ invoiceCount: number; salesTotal: number; collectionsTotal: number; balancesTotal: number } | null>(null);
+
+  const filteredProducts = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => {
+      const name = p.name?.toLowerCase() || "";
+      const cap = p.capacity?.toLowerCase() || "";
+      const price = String(p.price);
+      return name.includes(q) || cap.includes(q) || price.includes(q);
+    });
+  }, [products, query]);
 
   useEffect(() => {
     let mounted = true;
@@ -140,10 +152,25 @@ export default function Home() {
           )}
         </section>
         <section id="products" className="lg:col-span-3">
-          <div className="flex items-end justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
             <div>
               <h2 className="text-2xl font-semibold">Products</h2>
               <p className="text-sm text-muted-foreground">Browse available products.</p>
+            </div>
+            <div className="w-full sm:w-80">
+              <label htmlFor="product-search" className="sr-only">Search products</label>
+              <div className="relative">
+                <input
+                  id="product-search"
+                  type="search"
+                  inputMode="search"
+                  placeholder="ابحث عن منتج..."
+                  className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-white/90 dark:bg-zinc-900/90 px-4 py-2 pr-9 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400">🔍</span>
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -162,8 +189,10 @@ export default function Home() {
               </>
             ) : products.length === 0 ? (
               <div className="col-span-full text-muted-foreground">No products yet. Admin can add products from the dashboard.</div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="col-span-full text-muted-foreground">لا توجد نتائج مطابقة لبحثك.</div>
             ) : (
-              products.map((p) => (
+              filteredProducts.map((p) => (
                 <div key={p.id} className="rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md transition-shadow">
                   {p.images?.[0]?.url ? (
                     <Image

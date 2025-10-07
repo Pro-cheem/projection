@@ -144,8 +144,7 @@ const Weather = () => {
           retry: () => fetchWeather(city),
         },
       }));
-      
-      throw err;
+      // Do not rethrow; we render a graceful inline error UI instead of crashing the app
     }
   };
 

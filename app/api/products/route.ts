@@ -57,6 +57,8 @@ const UpdateProductSchema = z.object({
   // accept absolute or relative URLs
   imageUrl: z.string().min(1).nullable().optional(),
   imageBlurDataUrl: z.string().min(1).nullable().optional(),
+  // free-form properties edited by admin/manager only
+  properties: z.record(z.string(), z.any()).nullable().optional(),
 });
 
 export async function PATCH(req: Request) {
@@ -75,7 +77,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Invalid data", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { id, name, capacity, price, stockQty, notes, imageUrl, imageBlurDataUrl } = parsed.data;
+  const { id, name, capacity, price, stockQty, notes, imageUrl, imageBlurDataUrl, properties } = parsed.data;
   try {
     const updated = await prisma.$transaction(async (tx) => {
       if (imageUrl !== undefined) {
@@ -90,6 +92,7 @@ export async function PATCH(req: Request) {
           ...(price !== undefined ? { price } : {}),
           ...(stockQty !== undefined ? { stockQty } : {}),
           ...(notes !== undefined ? { notes } : {}),
+          ...(properties !== undefined ? { properties: properties as any } : {}),
           ...(imageUrl ? { images: { create: [{ url: imageUrl, kind: "PRODUCT", blurDataUrl: imageBlurDataUrl || undefined }] } } : {}),
         },
         include: { images: true },

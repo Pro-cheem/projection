@@ -31,6 +31,12 @@ enum RequestStatus {
   REJECTED
 }
 
+// Simple web order flow for store checkout
+enum WebOrderStatus {
+  PENDING
+  RECEIVED
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -81,6 +87,7 @@ model Product {
   price        Decimal
   stockQty     Int                   @default(0)
   notes        String?
+  properties   Json?
   images       Media[]
   invoiceItems InvoiceItem[]
   requestItems PurchaseRequestItem[]
@@ -170,6 +177,24 @@ model Media {
   productId   String?
 
   createdAt DateTime @default(now())
+}
+
+model WebOrder {
+  id           String          @id @default(cuid())
+  status       WebOrderStatus  @default(PENDING)
+  createdAt    DateTime        @default(now())
+  receivedAt   DateTime?
+  receivedById String?
+  receivedBy   String?         // name snapshot
+  // Customer info
+  name         String
+  phone        String
+  address      String
+  // Items stored as JSON for simplicity (id, name, price, qty)
+  items        Json
+  total        Decimal         @default(0)
+
+  @@index([status, createdAt])
 }
 
 model PurchaseRequest {

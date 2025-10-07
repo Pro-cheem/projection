@@ -28,6 +28,7 @@ export default function SiteHeader() {
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+  const [ordersPending, setOrdersPending] = useState(0);
   useEffect(() => {
     // Set isClient to true once component mounts (client-side only)
     setIsClient(true);
@@ -56,14 +57,28 @@ export default function SiteHeader() {
       } catch { setCartCount(0); }
     };
     readCart();
-    const onUpdate = () => readCart();
-    window.addEventListener("cart:updated", onUpdate);
-    window.addEventListener("storage", onUpdate);
+    const onUpdateCart = () => readCart();
+    window.addEventListener("cart:updated", onUpdateCart);
+    window.addEventListener("storage", onUpdateCart);
+
+    // Orders pending count sync
+    const readOrders = () => {
+      try {
+        const raw = window.localStorage.getItem("orders");
+        const list: Array<{ status?: string }> = raw ? JSON.parse(raw) : [];
+        const pending = list.filter(o => (o?.status || "pending") === "pending").length;
+        setOrdersPending(pending);
+      } catch { setOrdersPending(0); }
+    };
+    readOrders();
+    const onUpdateOrders = () => readOrders();
+    window.addEventListener("orders:updated", onUpdateOrders);
     
     return () => {
       clearInterval(timer);
-      window.removeEventListener("cart:updated", onUpdate);
-      window.removeEventListener("storage", onUpdate);
+      window.removeEventListener("cart:updated", onUpdateCart);
+      window.removeEventListener("storage", onUpdateCart);
+      window.removeEventListener("orders:updated", onUpdateOrders);
     };
   }, []);
   return (
@@ -96,6 +111,14 @@ export default function SiteHeader() {
       <div className="max-w-6xl mx-auto px-6 py-2 flex items-center justify-between gap-4">
         <div className="flex items-center gap-6">
           <nav className="hidden sm:flex gap-2 text-sm">
+            <a href="/orders" className="relative rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">
+              الطلبات
+              {ordersPending > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-[1.25rem] h-5 px-1 rounded-full bg-amber-600 text-white text-[11px] leading-5 text-center">
+                  {ordersPending}
+                </span>
+              )}
+            </a>
             <a href="/cart" className="relative rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">
               العربة
               {cartCount > 0 && (

@@ -85,9 +85,15 @@ export default function CartPage() {
               <span>المجموع</span>
               <span>{total.toLocaleString(undefined,{style:"currency",currency:"EGP"})}</span>
             </div>
-            <button className="w-full mt-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm" disabled>
-              إتمام الشراء (قريبًا)
-            </button>
+            {items.length > 0 ? (
+              <a href="/checkout" className="block w-full mt-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-center text-sm">
+                إتمام الشراء
+              </a>
+            ) : (
+              <button className="w-full mt-3 rounded-lg bg-gray-400 text-white px-4 py-2 text-sm cursor-not-allowed" disabled>
+                إتمام الشراء
+              </button>
+            )}
           </aside>
         </div>
       )}

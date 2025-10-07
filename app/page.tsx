@@ -116,21 +116,25 @@ export default function Home() {
             ) : (
               filteredProducts.map((p) => (
                 <div key={p.id} className="rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md transition-shadow">
-                  {p.images?.[0]?.url ? (
-                    <Image
-                      src={p.images[0].url}
-                      alt={p.name}
-                      width={1000}
-                      height={144}
-                      className="w-full h-36 object-cover rounded-t-xl"
-                    />
-                  ) : (
-                    <div className="w-full h-36 bg-gradient-to-br from-slate-200 to-slate-100 dark:from-zinc-800 dark:to-zinc-900 rounded-t-xl" />
-                  )}
-                  <div className="p-4">
-                    <h3 className="font-medium leading-tight">{p.name}</h3>
-                    <p className="text-sm text-muted-foreground">Capacity: {p.capacity}</p>
-                    <div className="mt-2 flex items-center justify-between gap-3">
+                  <a href={`/products/${p.id}`} className="block">
+                    {p.images?.[0]?.url ? (
+                      <Image
+                        src={p.images[0].url}
+                        alt={p.name}
+                        width={1000}
+                        height={144}
+                        className="w-full h-36 object-cover rounded-t-xl"
+                      />
+                    ) : (
+                      <div className="w-full h-36 bg-gradient-to-br from-slate-200 to-slate-100 dark:from-zinc-800 dark:to-zinc-900 rounded-t-xl" />
+                    )}
+                    <div className="p-4">
+                      <h3 className="font-medium leading-tight">{p.name}</h3>
+                      <p className="text-sm text-muted-foreground">Capacity: {p.capacity}</p>
+                    </div>
+                  </a>
+                  <div className="px-4 pb-4 -mt-2">
+                    <div className="flex items-center justify-between gap-3">
                       <p className="font-semibold">{Number(p.price).toLocaleString(undefined, { style: "currency", currency: "EGP" })}</p>
                       <button onClick={() => addToCart(p)} className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-sm">
                         أضف للعربة

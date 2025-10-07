@@ -14,6 +14,7 @@ type Product = {
   price: string | number;
   stockQty: number;
   notes?: string | null;
+  properties?: Record<string, any> | null;
   images: Media[];
 };
 
@@ -36,6 +37,8 @@ export default function ProductDetailPage() {
   const [savingNotes, setSavingNotes] = useState(false);
   const [notes, setNotes] = useState<string>("");
   const [activeIdx, setActiveIdx] = useState(0);
+  const [propsRows, setPropsRows] = useState<Array<{ key: string; value: string }>>([]);
+  const [savingProps, setSavingProps] = useState(false);
 
   // @ts-expect-error custom role on session
   const role: string | undefined = session?.user?.role;
@@ -52,6 +55,9 @@ export default function ProductDetailPage() {
         if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
         setProduct(json.product);
         setNotes(json.product?.notes || "");
+        const propsObj = (json.product?.properties || {}) as Record<string, any>;
+        const rows = Object.entries(propsObj).map(([k, v]: [string, any]) => ({ key: k, value: String(v ?? "") }));
+        setPropsRows(rows);
         setItems(json.recentItems || []);
         setActiveIdx(0);
       } catch (e: any) {
@@ -160,6 +166,86 @@ export default function ProductDetailPage() {
                   </div>
                 ) : (
                   product.notes ? <div className="text-sm whitespace-pre-wrap">{product.notes}</div> : <div className="text-sm text-muted-foreground">لا توجد ملاحظات.</div>
+                )}
+              </div>
+
+              <div className="mt-5">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-sm text-muted-foreground">خصائص المنتج</div>
+                  {canEdit && (
+                    <button
+                      className="text-xs underline"
+                      onClick={()=>setPropsRows((r)=>[...r,{ key: "", value: "" }])}
+                    >إضافة خاصية</button>
+                  )}
+                </div>
+                {canEdit ? (
+                  <div className="space-y-2">
+                    {propsRows.length === 0 && (
+                      <div className="text-xs text-muted-foreground">لا توجد خصائص بعد.</div>
+                    )}
+                    {propsRows.map((row, idx) => (
+                      <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                        <input
+                          className="col-span-5 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-1.5 text-sm"
+                          placeholder="المفتاح (مثال: اللون)"
+                          value={row.key}
+                          onChange={(e)=>setPropsRows(prev=>prev.map((r,i)=> i===idx? { ...r, key: e.target.value }: r))}
+                        />
+                        <input
+                          className="col-span-6 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-1.5 text-sm"
+                          placeholder="القيمة (مثال: أحمر)"
+                          value={row.value}
+                          onChange={(e)=>setPropsRows(prev=>prev.map((r,i)=> i===idx? { ...r, value: e.target.value }: r))}
+                        />
+                        <button
+                          className="col-span-1 text-red-600 text-sm"
+                          onClick={()=>setPropsRows(prev=>prev.filter((_,i)=>i!==idx))}
+                          aria-label="حذف"
+                        >×</button>
+                      </div>
+                    ))}
+                    <div className="pt-1 text-right">
+                      <button
+                        disabled={savingProps}
+                        className="rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-4 py-2 text-sm"
+                        onClick={async()=>{
+                          if (!id) return;
+                          setSavingProps(true);
+                          setError(null);
+                          try {
+                            const obj: Record<string,string> = {};
+                            for (const r of propsRows) {
+                              const k = r.key.trim();
+                              if (!k) continue;
+                              obj[k] = r.value;
+                            }
+                            const res = await fetch("/api/products", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, properties: obj }) });
+                            const json = await res.json();
+                            if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+                            setProduct(json.product);
+                          } catch (e: any) {
+                            setError(e?.message || "Failed to save properties");
+                          } finally {
+                            setSavingProps(false);
+                          }
+                        }}
+                      >{savingProps? "جارٍ الحفظ…" : "حفظ الخصائص"}</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1 text-sm">
+                    {product.properties && Object.keys(product.properties).length > 0 ? (
+                      Object.entries(product.properties).map(([k,v]) => (
+                        <div key={k} className="flex items-center justify-between gap-3">
+                          <div className="text-muted-foreground">{k}</div>
+                          <div className="font-medium">{String(v)}</div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-muted-foreground">لا توجد خصائص.</div>
+                    )}
+                  </div>
                 )}
               </div>
             </aside>

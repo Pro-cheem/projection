@@ -1,96 +1,139 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 
 type OrderItem = {
-  product: { id: string; name: string; price: string | number };
-  quantity: number;
-  priceAtRequest: string | number;
+  id: string;
+  name: string;
+  price: number;
+  qty: number;
 };
 
 type Order = {
   id: string;
+  status: "pending" | "received";
+  receivedBy: null | { id?: string; name?: string };
+  receivedAt: null | string;
   createdAt: string;
-  requester?: { id: string; name: string | null; email: string | null };
+  name: string;
+  phone: string;
+  address: string;
   items: OrderItem[];
-  note?: string | null;
+  total: number;
 };
 
 export default function OrdersPage() {
+  const { data: session } = useSession();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  function load() {
+    try {
+      const raw = window.localStorage.getItem("orders");
+      const list: Order[] = raw ? JSON.parse(raw) : [];
+      setOrders(Array.isArray(list) ? list : []);
+    } catch { setOrders([]); }
+  }
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch("/api/orders", { cache: "no-store" });
-        const text = await res.text();
-        let data: any = null;
-        try { data = text ? JSON.parse(text) : null; } catch {}
-        if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
-        setOrders(Array.isArray(data?.orders) ? data.orders : []);
-      } catch (e: any) {
-        setError(e?.message || "Failed to load orders");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    load();
+    const onU = () => load();
+    window.addEventListener("orders:updated", onU);
+    window.addEventListener("storage", onU);
+    return () => {
+      window.removeEventListener("orders:updated", onU);
+      window.removeEventListener("storage", onU);
+    };
   }, []);
 
-  return (
-    <div className="max-w-5xl mx-auto px-6 py-10">
-      <h1 className="text-2xl font-semibold mb-2">طلباتي</h1>
-      <p className="text-sm text-muted-foreground mb-6">تظهر هنا الطلبات التي قمت بإنشائها.</p>
+  const pending = useMemo(() => orders.filter(o => o.status === "pending"), [orders]);
+  const received = useMemo(() => orders.filter(o => o.status === "received"), [orders]);
 
-      {loading ? (
-        <div className="text-sm text-muted-foreground">جاري التحميل…</div>
-      ) : error ? (
-        <div className="text-sm text-red-600">{error}</div>
-      ) : orders.length === 0 ? (
-        <div className="text-sm text-muted-foreground">لا توجد طلبات بعد.</div>
-      ) : (
-        <div className="space-y-4">
-          {orders.map((o) => (
-            <div key={o.id} className="rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 p-4">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">رقم الطلب</div>
-                <div className="font-mono text-sm">{o.id}</div>
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {new Date(o.createdAt).toLocaleString()}
-              </div>
-              <div className="mt-3">
-                <table className="w-full text-sm">
-                  <thead className="bg-black/5 dark:bg-white/10">
-                    <tr>
-                      <th className="text-right p-2">المنتج</th>
-                      <th className="text-right p-2">السعر</th>
-                      <th className="text-right p-2">الكمية</th>
-                      <th className="text-right p-2">الإجمالي</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+  function persist(next: Order[]) {
+    setOrders(next);
+    try { window.localStorage.setItem("orders", JSON.stringify(next)); } catch {}
+    try { window.dispatchEvent(new Event("orders:updated")); } catch {}
+  }
+
+  function markReceived(id: string) {
+    const uid = (session?.user as any)?.id;
+    const uname = (session?.user as any)?.name || (session?.user as any)?.username;
+    const next = orders.map(o => o.id === id ? { ...o, status: "received" as const, receivedBy: { id: uid, name: uname }, receivedAt: new Date().toISOString() } : o);
+    persist(next);
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 py-10">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold">الطلبات</h1>
+        <a href="/" className="text-sm underline">عودة للرئيسية</a>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <section>
+          <h2 className="text-lg font-semibold mb-3">في الإنتظار</h2>
+          {pending.length === 0 ? (
+            <div className="text-sm text-muted-foreground">لا توجد طلبات قيد الانتظار.</div>
+          ) : (
+            <div className="space-y-4">
+              {pending.map(o => (
+                <div key={o.id} className="rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="font-mono text-sm">{o.id}</div>
+                    <div className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</div>
+                  </div>
+                  <div className="mt-2 text-sm">
+                    <div><span className="text-muted-foreground">الاسم: </span>{o.name}</div>
+                    <div><span className="text-muted-foreground">الهاتف: </span>{o.phone}</div>
+                    <div className="truncate"><span className="text-muted-foreground">العنوان: </span>{o.address}</div>
+                  </div>
+                  <div className="mt-3 space-y-1 text-sm">
                     {o.items.map((it, idx) => (
-                      <tr key={idx} className="border-t border-black/10 dark:border-white/10">
-                        <td className="p-2 text-right">{it.product?.name}</td>
-                        <td className="p-2 text-right">{Number(it.priceAtRequest).toLocaleString(undefined,{style:'currency',currency:'EGP'})}</td>
-                        <td className="p-2 text-right">{it.quantity}</td>
-                        <td className="p-2 text-right">{(Number(it.priceAtRequest)*Number(it.quantity)).toLocaleString(undefined,{style:'currency',currency:'EGP'})}</td>
-                      </tr>
+                      <div key={idx} className="flex items-center justify-between">
+                        <div className="truncate">{it.name} × {it.qty}</div>
+                        <div className="tabular-nums">{(it.price * it.qty).toLocaleString(undefined,{style:"currency",currency:"EGP"})}</div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-3 text-right font-semibold">
-                الإجمالي: {o.items.reduce((s, it)=> s + Number(it.priceAtRequest)*Number(it.quantity), 0).toLocaleString(undefined,{style:'currency',currency:'EGP'})}
-              </div>
+                    <div className="border-t border-black/10 dark:border-white/10 pt-1 flex items-center justify-between font-medium">
+                      <span>الإجمالي</span>
+                      <span>{o.total.toLocaleString(undefined,{style:"currency",currency:"EGP"})}</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 text-right">
+                    <button onClick={() => markReceived(o.id)} className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-sm">استلام الطلب</button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold mb-3">تم استلامها</h2>
+          {received.length === 0 ? (
+            <div className="text-sm text-muted-foreground">لا توجد طلبات مستلمة.</div>
+          ) : (
+            <div className="space-y-4">
+              {received.map(o => (
+                <div key={o.id} className="rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="font-mono text-sm">{o.id}</div>
+                    <div className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</div>
+                  </div>
+                  <div className="mt-2 text-sm">
+                    <div><span className="text-muted-foreground">الاسم: </span>{o.name}</div>
+                    <div><span className="text-muted-foreground">الهاتف: </span>{o.phone}</div>
+                    <div className="truncate"><span className="text-muted-foreground">العنوان: </span>{o.address}</div>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    تم الاستلام بواسطة: {o.receivedBy?.name || o.receivedBy?.id || "—"} • في {o.receivedAt ? new Date(o.receivedAt).toLocaleString() : "—"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

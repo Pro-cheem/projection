@@ -68,31 +68,30 @@ export default function SiteHeader() {
   }, []);
   return (
     <header className="sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-white/70 bg-white/80 dark:bg-black/50 border-b border-black/5 dark:border-white/10">
-      <div className="w-full bg-gradient-to-r from-green-700 to-emerald-800 py-2 px-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <a href="/" className="flex items-center">
-              {logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain" />
-              ) : (
-                <span className="text-2xl font-bold text-white">الطريق نحو الأفضل</span>
-              )}
-            </a>
-            <div className="hidden md:flex items-center gap-2 text-white/90 text-sm">
-              <span className="hidden lg:inline">جودة • استدامة • تطور</span>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-6">
-            {isClient && currentTime && (
-              <div className="hidden md:flex flex-col items-end border-r border-white/20 pr-6">
-                <div className="text-white text-sm font-medium">{formatDate(currentTime)}</div>
-                <div className="text-white/90 text-xs">{formatTime(currentTime)}</div>
+      <div className="w-full bg-gradient-to-r from-green-700 to-emerald-800 px-0">
+        <div className="max-w-7xl mx-auto w-full relative">
+          <a href="/" aria-label="Logo" className="block">
+            {logoUrl ? (
+              <div
+                className="w-full h-28 md:h-40 bg-center bg-no-repeat bg-cover"
+                style={{ backgroundImage: `url(${logoUrl})` }}
+              />
+            ) : (
+              <div className="w-full h-20 md:h-28 flex items-center justify-center">
+                <span className="text-2xl md:text-3xl font-bold text-white">الطريق نحو الأفضل</span>
               </div>
             )}
-          </div>
-      </div>
+          </a>
+          {/* overlay */}
+          <div className="absolute inset-0 bg-black/25 pointer-events-none" />
+          {/* clock on banner */}
+          {isClient && currentTime && (
+            <div className="absolute right-4 top-3 hidden md:flex flex-col items-end text-white drop-shadow">
+              <div className="text-sm font-medium">{formatDate(currentTime)}</div>
+              <div className="text-xs text-white/90">{formatTime(currentTime)}</div>
+            </div>
+          )}
+        </div>
       </div>
       <div className="max-w-6xl mx-auto px-6 py-2 flex items-center justify-between gap-4">
         <div className="flex items-center gap-6">

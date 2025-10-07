@@ -64,6 +64,45 @@ function exportRepsCsv(
         if (/[",\n]/.test(s)) {
           return '"' + s.replaceAll('"', '""') + '"';
         }
+
+  async function promoteToManager() {
+    setPromoting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, role: "MANAGER" }),
+      });
+      const raw = await res.text();
+      let data: any = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch {}
+      if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+      setDone(true);
+    } catch (e: any) {
+      setError(e.message || "Failed");
+    } finally {
+      setPromoting(false);
+    }
+  }
+
+  async function removeUser() {
+    if (!confirm("Delete this representative?")) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/users?userId=${encodeURIComponent(user.id)}`, { method: "DELETE" });
+      const text = await res.text();
+      let data: any = null;
+      try { data = text ? JSON.parse(text) : null; } catch {}
+      if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+      setDone(true);
+    } catch (e: any) {
+      setError(e.message || "Failed");
+    } finally {
+      setDeleting(false);
+    }
+  }
         return s;
       }).join(","))
       .join("\n");
@@ -222,7 +261,7 @@ export default function AdminUsersTable({
                   <th className="text-left p-3">Username</th>
                   <th className="text-left p-3">Email</th>
                   <th className="text-left p-3">Phone</th>
-                  <th className="text-right p-3">Open</th>
+                  <th className="text-right p-3">معاملات</th>
                 </tr>
               </thead>
               <tbody>
@@ -232,7 +271,7 @@ export default function AdminUsersTable({
                     <td className="p-3">{formatVal((u as any).username)}</td>
                     <td className="p-3">{formatVal((u as any).email)}</td>
                     <td className="p-3">{formatVal((u as any).phone)}</td>
-                    <td className="p-3 text-right"><a href={`/reps/${u.id}`} className="underline text-blue-600 text-xs">Open</a></td>
+                    <td className="p-3 text-right"><a href={`/reps/${u.id}`} className="underline text-blue-600 text-xs">معاملات</a></td>
                   </tr>
                 ))}
               </tbody>
@@ -248,6 +287,7 @@ function Row({ user }: { user: { id: string; name: string | null; username: stri
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function approve() {
     setLoading(true);
@@ -270,6 +310,24 @@ function Row({ user }: { user: { id: string; name: string | null; username: stri
     }
   }
 
+  async function removeUser() {
+    if (!confirm("Delete this user?")) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/users?userId=${encodeURIComponent(user.id)}` , { method: "DELETE" });
+      const text = await res.text();
+      let data: any = null;
+      try { data = text ? JSON.parse(text) : null; } catch {}
+      if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+      setDone(true);
+    } catch (e: any) {
+      setError(e.message || "Failed");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (done) return null;
 
   return (
@@ -282,6 +340,9 @@ function Row({ user }: { user: { id: string; name: string | null; username: stri
         <button onClick={approve} disabled={loading} className="rounded-md bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs disabled:opacity-60">
           {loading ? "Approving…" : "Approve as Representative"}
         </button>
+        <button onClick={removeUser} disabled={deleting} className="ml-2 rounded-md bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-xs disabled:opacity-60">
+          {deleting ? "Deleting…" : "Delete"}
+        </button>
         {error && <div className="text-xs text-red-600 mt-1">{error}</div>}
       </td>
     </tr>
@@ -292,6 +353,8 @@ function EmployeeRow({ user, repAgg, loadingAgg, egpFmt }: { user: { id: string;
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [promoting, setPromoting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function revertToCustomer() {
     setLoading(true);
@@ -332,7 +395,13 @@ function EmployeeRow({ user, repAgg, loadingAgg, egpFmt }: { user: { id: string;
         <button onClick={revertToCustomer} disabled={loading} className="rounded-md bg-black text-white dark:bg-white dark:text-black px-3 py-1.5 text-xs disabled:opacity-60">
           {loading ? "Updating…" : "Revert to Customer"}
         </button>
-        <a href={`/reps/${user.id}`} className="ml-2 underline text-blue-600 text-xs">Open</a>
+        <button onClick={promoteToManager} disabled={promoting} className="ml-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 text-xs disabled:opacity-60">
+          {promoting ? "Promoting…" : "Promote to Manager"}
+        </button>
+        <button onClick={removeUser} disabled={deleting} className="ml-2 rounded-md bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-xs disabled:opacity-60">
+          {deleting ? "Deleting…" : "Delete"}
+        </button>
+        <a href={`/reps/${user.id}`} className="ml-2 underline text-blue-600 text-xs">Transactions</a>
         {error && <div className="text-xs text-red-600 mt-1">{error}</div>}
       </td>
     </tr>

@@ -7,7 +7,7 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Paths requiring authentication and roles
-  const adminPaths = ["/admin", "/admin/", "/admin/users", "/admin/users/", "/stock", "/stock/", "/settings", "/settings/"];
+  const adminPaths = ["/admin", "/admin/", "/admin/users", "/admin/users/", "/stock", "/stock/", "/settings", "/settings/", "/journal", "/journal/"];
   const invoicePaths = ["/invoice", "/invoice/"];
   const repsBase = "/reps/";
 
@@ -66,6 +66,8 @@ export const config = {
     "/settings",
     "/settings/:path*",
     "/invoice",
+    "/journal",
+    "/journal/:path*",
     "/reps/:path*",
   ],
 };

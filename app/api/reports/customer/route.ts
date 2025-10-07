@@ -19,8 +19,17 @@ export async function GET(req: Request) {
   if (!customerId) return NextResponse.json({ error: "customerId is required" }, { status: 400 });
 
   try {
+    // If EMPLOYEE, ensure the customer belongs to the current user
+    const userId = (session.user as any)?.id || (session as any).user?.id;
+    const customerWhere: any = { id: customerId };
+    if (role === "EMPLOYEE") {
+      customerWhere.ownerId = userId;
+    }
     // current customer debt
-    const customer = await prisma.customer.findUnique({ where: { id: customerId }, select: { id: true, name: true, totalDebt: true } });
+    const customer = await prisma.customer.findFirst({ where: customerWhere, select: { id: true, name: true, totalDebt: true } });
+    if (!customer) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const where: any = { customerId };
     if (from || to) {

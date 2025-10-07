@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { useToast } from "@/components/toast-provider";
 
 type Product = {
   id: string;
@@ -15,6 +16,27 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [query, setQuery] = useState("");
+  const { toast } = useToast();
+
+  function addToCart(p: Product) {
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem("cart") : null;
+      const cart: Array<{ id: string; name: string; price: number; image?: string | null; qty: number }> = raw ? JSON.parse(raw) : [];
+      const idx = cart.findIndex((i) => i.id === p.id);
+      const priceNum = Number(p.price);
+      if (idx >= 0) {
+        cart[idx].qty += 1;
+      } else {
+        cart.push({ id: p.id, name: p.name, price: priceNum, image: p.images?.[0]?.url || null, qty: 1 });
+      }
+      window.localStorage.setItem("cart", JSON.stringify(cart));
+      try { window.dispatchEvent(new Event("cart:updated")); } catch {}
+      toast({ variant: "success", title: "تمت الإضافة للعربة", description: `${p.name} تمت إضافته.` });
+    } catch (e) {
+      console.error(e);
+      toast({ variant: "error", title: "تعذر الإضافة", description: "حدث خطأ أثناء إضافة المنتج إلى العربة" });
+    }
+  }
 
   const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -108,7 +130,12 @@ export default function Home() {
                   <div className="p-4">
                     <h3 className="font-medium leading-tight">{p.name}</h3>
                     <p className="text-sm text-muted-foreground">Capacity: {p.capacity}</p>
-                    <p className="mt-2 font-semibold">{Number(p.price).toLocaleString(undefined, { style: "currency", currency: "EGP" })}</p>
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <p className="font-semibold">{Number(p.price).toLocaleString(undefined, { style: "currency", currency: "EGP" })}</p>
+                      <button onClick={() => addToCart(p)} className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-sm">
+                        أضف للعربة
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))

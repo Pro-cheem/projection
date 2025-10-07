@@ -69,8 +69,13 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "role is required when password is not provided" }, { status: 400 });
   }
   const targetRole = String(body.role);
-  if (![`REQUESTER`, `EMPLOYEE`].includes(targetRole)) {
+  // Allow switching between REQUESTER and EMPLOYEE for ADMIN/MANAGER
+  // Allow promoting to MANAGER only if current session is ADMIN
+  if (![`REQUESTER`, `EMPLOYEE`, `MANAGER`].includes(targetRole)) {
     return NextResponse.json({ error: "Invalid role change" }, { status: 400 });
+  }
+  if (targetRole === "MANAGER" && role !== "ADMIN") {
+    return NextResponse.json({ error: "Only ADMIN can promote to MANAGER" }, { status: 403 });
   }
   try {
     const updated = await prisma.user.update({
@@ -82,5 +87,30 @@ export async function PATCH(req: Request) {
   } catch (e) {
     console.error("PATCH /api/admin/users error", e);
     return NextResponse.json({ error: "Update failed" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  const session = await getServerSession(authOptions);
+  // @ts-expect-error custom role on session
+  const role = session?.user?.role as string | undefined;
+  if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { searchParams } = new URL(req.url);
+  const userId = searchParams.get("userId");
+  if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });
+  try {
+    // Only allow deleting REQUESTER or EMPLOYEE
+    const target = await prisma.user.findUnique({ where: { id: String(userId) }, select: { id: true, role: true } });
+    if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (target.role !== "REQUESTER" && target.role !== "EMPLOYEE") {
+      return NextResponse.json({ error: "Cannot delete this role" }, { status: 400 });
+    }
+    await prisma.user.delete({ where: { id: String(userId) } });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("DELETE /api/admin/users error", e);
+    return NextResponse.json({ error: "Delete failed" }, { status: 500 });
   }
 }

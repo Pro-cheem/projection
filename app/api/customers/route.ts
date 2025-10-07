@@ -5,7 +5,18 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const role = (session.user as any)?.role as string | undefined;
+    const userId = (session.user as any)?.id || (session as any).user?.id;
+
+    const where: any = {};
+    if (role === "EMPLOYEE") {
+      where.ownerId = userId;
+    }
+
     const customers = await prisma.customer.findMany({
+      where,
       orderBy: { name: "asc" },
       select: { id: true, name: true, email: true, phone: true, totalDebt: true },
     });

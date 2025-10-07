@@ -78,8 +78,10 @@ export default function SiteHeader() {
       <div className="max-w-6xl mx-auto px-6 py-2 flex items-center justify-between gap-4">
         <div className="flex items-center gap-6">
           <nav className="hidden sm:flex gap-2 text-sm">
-            <a href="/shop" className="rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">Shop</a>
             <a href="/cart" className="rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">Cart</a>
+            {session && (
+              <a href="/orders" className="rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">Orders</a>
+            )}
             {session && (
               <>
                 {((session.user as any)?.role === 'EMPLOYEE' || (session.user as any)?.role === 'MANAGER' || (session.user as any)?.role === 'ADMIN') && (

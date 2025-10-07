@@ -75,9 +75,6 @@ export default function InvoiceForm() {
           if (validProducts.length === 0) {
             setError('No products available. Please add products first.');
           }
-          if (validCustomers.length === 0) {
-            setError(prev => prev ? prev + ' No customers available. Please add customers first.' : 'No customers available. Please add customers first.');
-          }
         }
       } catch (e: any) {
         if (mounted) setError(e.message || "Failed to load data");
@@ -262,7 +259,7 @@ export default function InvoiceForm() {
             onChange={e => setCustomerId(e.target.value)} 
             className="flex-1 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
           >
-            <option value="">Select a customer…</option>
+            <option value="">{customers.length ? 'Select a customer…' : 'No customers found — please add one'}</option>
             {customers.map(c => (
               <option key={c.id} value={c.id}>
                 {c.name} {c.phone ? `(${c.phone})` : ""}

@@ -64,45 +64,6 @@ function exportRepsCsv(
         if (/[",\n]/.test(s)) {
           return '"' + s.replaceAll('"', '""') + '"';
         }
-
-  async function promoteToManager() {
-    setPromoting(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/users", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, role: "MANAGER" }),
-      });
-      const raw = await res.text();
-      let data: any = null;
-      try { data = raw ? JSON.parse(raw) : null; } catch {}
-      if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
-      setDone(true);
-    } catch (e: any) {
-      setError(e.message || "Failed");
-    } finally {
-      setPromoting(false);
-    }
-  }
-
-  async function removeUser() {
-    if (!confirm("Delete this representative?")) return;
-    setDeleting(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/admin/users?userId=${encodeURIComponent(user.id)}`, { method: "DELETE" });
-      const text = await res.text();
-      let data: any = null;
-      try { data = text ? JSON.parse(text) : null; } catch {}
-      if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
-      setDone(true);
-    } catch (e: any) {
-      setError(e.message || "Failed");
-    } finally {
-      setDeleting(false);
-    }
-  }
         return s;
       }).join(","))
       .join("\n");
@@ -374,6 +335,45 @@ function EmployeeRow({ user, repAgg, loadingAgg, egpFmt }: { user: { id: string;
       setError(e.message || "Failed");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function promoteToManager() {
+    setPromoting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, role: "MANAGER" }),
+      });
+      const raw = await res.text();
+      let data: any = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch {}
+      if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+      setDone(true);
+    } catch (e: any) {
+      setError(e.message || "Failed");
+    } finally {
+      setPromoting(false);
+    }
+  }
+
+  async function removeUser() {
+    if (!confirm("Delete this representative?")) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/users?userId=${encodeURIComponent(user.id)}`, { method: "DELETE" });
+      const text = await res.text();
+      let data: any = null;
+      try { data = text ? JSON.parse(text) : null; } catch {}
+      if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+      setDone(true);
+    } catch (e: any) {
+      setError(e.message || "Failed");
+    } finally {
+      setDeleting(false);
     }
   }
 

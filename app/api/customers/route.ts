@@ -8,10 +8,26 @@ export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const role = (session.user as any)?.role as string | undefined;
-    const userId = (session.user as any)?.id || (session as any).user?.id;
+    // Resolve current user id robustly
+    let userId: string | undefined = (session.user as any)?.id || (session as any).user?.id;
+    if (!userId) {
+      const su: any = session.user || {};
+      // Try by username (unique)
+      if (su?.username) {
+        try { const u = await prisma.user.findUnique({ where: { username: su.username } }); if (u) userId = u.id; } catch {}
+      }
+      // Try by email (unique)
+      if (!userId && su?.email) {
+        try { const u = await prisma.user.findUnique({ where: { email: su.email } }); if (u) userId = u.id; } catch {}
+      }
+      // Try by name (not unique, best-effort)
+      if (!userId && su?.name) {
+        try { const u = await prisma.user.findFirst({ where: { name: su.name } }); if (u) userId = u.id; } catch {}
+      }
+    }
 
     const where: any = {};
-    if (role === "EMPLOYEE") {
+    if (role === "EMPLOYEE" && userId) {
       where.ownerId = userId;
     }
 
@@ -30,21 +46,26 @@ export async function GET() {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  // Allow EMPLOYEE, MANAGER, or ADMIN to create customers
+  // Allow only EMPLOYEE or MANAGER to create customers
   const role = (session.user as any).role as string | undefined;
-  if (role !== "EMPLOYEE" && role !== "MANAGER" && role !== "ADMIN") {
+  if (role !== "EMPLOYEE" && role !== "MANAGER") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   // Resolve current user id reliably
   let userId: string | undefined = (session.user as any)?.id || (session as any).user?.id;
   if (!userId) {
-    // Fallback: try resolve by email
-    const email = (session.user as any)?.email;
-    if (email) {
-      try {
-        const u = await prisma.user.findUnique({ where: { email } });
-        if (u) userId = u.id;
-      } catch {}
+    const su: any = session.user || {};
+    // Try username first
+    if (su?.username) {
+      try { const u = await prisma.user.findUnique({ where: { username: su.username } }); if (u) userId = u.id; } catch {}
+    }
+    // Then email
+    if (!userId && su?.email) {
+      try { const u = await prisma.user.findUnique({ where: { email: su.email } }); if (u) userId = u.id; } catch {}
+    }
+    // Then name as best-effort
+    if (!userId && su?.name) {
+      try { const u = await prisma.user.findFirst({ where: { name: su.name } }); if (u) userId = u.id; } catch {}
     }
   }
 
@@ -53,7 +74,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Name required" }, { status: 400 });
   }
   if (!userId) {
-    return NextResponse.json({ error: "Unable to resolve current user" }, { status: 400 });
+    return NextResponse.json({ error: "Unable to resolve current user (no id/username/email/name)." }, { status: 400 });
   }
 
   try {

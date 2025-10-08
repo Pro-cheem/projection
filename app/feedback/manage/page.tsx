@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 
-type Feedback = { id: string; name: string | null; phone: string | null; message: string; createdAt: string };
+type Feedback = { id: string; name: string | null; phone: string | null; message: string; createdAt: string; status: 'NEW'|'READ'|'CLOSED' };
 
 export default function ManageFeedbackPage() {
   const { data: session, status } = useSession();
@@ -13,6 +13,39 @@ export default function ManageFeedbackPage() {
   const [items, setItems] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
+
+  async function refreshList() {
+    try {
+      const res = await fetch("/api/feedback", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      setItems(Array.isArray(data?.feedback) ? data.feedback : []);
+    } catch (e:any) {
+      setError(e?.message || 'تعذر تحميل الشكاوى');
+    }
+  }
+
+  async function act(id: string, action: 'read'|'close'|'reopen') {
+    setActingId(id);
+    setError(null);
+    try {
+      const res = await fetch('/api/feedback', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      await refreshList();
+    } catch (e:any) {
+      setError(e?.message || 'تعذر تنفيذ العملية');
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  function StatusBadge({s}:{s:Feedback['status']}) {
+    const map:any = { NEW: { text: 'جديدة', cls: 'bg-emerald-600' }, READ: { text: 'مقروءة', cls: 'bg-amber-600' }, CLOSED: { text: 'مغلقة', cls: 'bg-zinc-700' } };
+    const v = map[s] || map.NEW;
+    return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-white text-xs ${v.cls}`}>{v.text}</span>;
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -69,6 +102,8 @@ export default function ManageFeedbackPage() {
                 <th className="text-right p-2">الاسم</th>
                 <th className="text-right p-2">الهاتف</th>
                 <th className="text-right p-2">الرسالة</th>
+                <th className="text-right p-2">الحالة</th>
+                <th className="text-right p-2">إجراءات</th>
               </tr>
             </thead>
             <tbody>
@@ -77,7 +112,21 @@ export default function ManageFeedbackPage() {
                   <td className="p-2 whitespace-nowrap">{new Date(f.createdAt).toLocaleString()}</td>
                   <td className="p-2 whitespace-nowrap">{f.name || "—"}</td>
                   <td className="p-2 whitespace-nowrap">{f.phone || "—"}</td>
-                  <td className="p-2 whitespace-pre-wrap">{f.message}</td>
+                  <td className="p-2 whitespace-pre-wrap max-w-[40ch]">{f.message}</td>
+                  <td className="p-2 whitespace-nowrap text-right"><StatusBadge s={f.status} /></td>
+                  <td className="p-2 whitespace-nowrap text-right">
+                    <div className="flex gap-2 justify-end">
+                      {f.status === 'NEW' && (
+                        <button onClick={()=>act(f.id,'read')} disabled={actingId===f.id} className="rounded bg-amber-600 hover:bg-amber-700 text-white px-2 py-1 text-xs">تحديد كمقروءة</button>
+                      )}
+                      {(f.status === 'NEW' || f.status === 'READ') && (
+                        <button onClick={()=>act(f.id,'close')} disabled={actingId===f.id} className="rounded bg-zinc-800 hover:bg-zinc-900 text-white px-2 py-1 text-xs">إغلاق</button>
+                      )}
+                      {f.status === 'CLOSED' && (
+                        <button onClick={()=>act(f.id,'reopen')} disabled={actingId===f.id} className="rounded bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 text-xs">إعادة فتح</button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

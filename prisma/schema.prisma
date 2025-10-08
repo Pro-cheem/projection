@@ -257,12 +257,20 @@ model VerificationToken {
 }
 
 // Visitor feedback (notes/complaints)
+enum FeedbackStatus {
+  NEW
+  READ
+  CLOSED
+}
 model Feedback {
   id        String   @id @default(cuid())
   name      String?
   phone     String?
   message   String
   createdAt DateTime @default(now())
+  status    FeedbackStatus @default(NEW)
+  readAt    DateTime?
+  closedAt  DateTime?
 
   @@index([createdAt])
 }

@@ -31,6 +31,7 @@ export default function SiteHeader() {
   const [cartCount, setCartCount] = useState(0);
   const [ordersPending, setOrdersPending] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [feedbackCount, setFeedbackCount] = useState<number | null>(null);
   useEffect(() => {
     // Set isClient to true once component mounts (client-side only)
     setIsClient(true);
@@ -75,14 +76,30 @@ export default function SiteHeader() {
     readOrders();
     const onUpdateOrders = () => readOrders();
     window.addEventListener("orders:updated", onUpdateOrders);
+
+    // Feedback count (manager only)
+    let fbTimer: any;
+    const readFeedback = async () => {
+      try {
+        const role = (session?.user as any)?.role;
+        if (role !== 'MANAGER') { setFeedbackCount(null); return; }
+        const res = await fetch('/api/feedback?action=count', { cache: 'no-store' });
+        if (!res.ok) return;
+        const j = await res.json();
+        setFeedbackCount(typeof j?.count === 'number' ? j.count : null);
+      } catch {}
+    };
+    readFeedback();
+    fbTimer = setInterval(readFeedback, 60000);
     
     return () => {
       clearInterval(timer);
       window.removeEventListener("cart:updated", onUpdateCart);
       window.removeEventListener("storage", onUpdateCart);
       window.removeEventListener("orders:updated", onUpdateOrders);
+      clearInterval(fbTimer);
     };
-  }, []);
+  }, [session]);
   // Toggle mobile menu
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
@@ -152,6 +169,16 @@ export default function SiteHeader() {
                 )}
               </a>
             )}
+            {session && ((session.user as any)?.role === 'MANAGER') && (
+              <a href="/feedback/manage" className="relative rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">
+                الشكاوي
+                {feedbackCount !== null && (
+                  <span className="absolute -top-2 -right-2 min-w-[1.25rem] h-5 px-1 rounded-full bg-emerald-600 text-white text-[11px] leading-5 text-center">
+                    {feedbackCount}
+                  </span>
+                )}
+              </a>
+            )}
             <a href="/cart" className="relative rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">
               العربة
               {cartCount > 0 && (
@@ -204,6 +231,20 @@ export default function SiteHeader() {
                 {ordersPending > 0 && (
                   <span className="min-w-[1.5rem] h-6 flex items-center justify-center rounded-full bg-amber-600 text-white text-xs">
                     {ordersPending}
+                  </span>
+                )}
+              </a>
+            )}
+            {session && ((session.user as any)?.role === 'MANAGER') && (
+              <a 
+                href="/feedback/manage" 
+                className="block px-4 py-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white flex justify-between items-center"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span>الشكاوي</span>
+                {feedbackCount !== null && (
+                  <span className="min-w-[1.5rem] h-6 flex items-center justify-center rounded-full bg-emerald-600 text-white text-xs">
+                    {feedbackCount}
                   </span>
                 )}
               </a>

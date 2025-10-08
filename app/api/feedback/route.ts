@@ -41,7 +41,7 @@ export async function GET(req: Request) {
   const action = searchParams.get("action");
   try {
     if (action === "count") {
-      const count = await prisma.feedback.count();
+      const count = await prisma.feedback.count({ where: { status: "NEW" as any } });
       return NextResponse.json({ count });
     }
     const items = await prisma.feedback.findMany({ orderBy: { createdAt: "desc" } });
@@ -49,5 +49,40 @@ export async function GET(req: Request) {
   } catch (err) {
     console.error("/api/feedback GET error", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
+
+const UpdateFeedbackSchema = z.object({
+  id: z.string().min(1),
+  action: z.enum(["read", "close", "reopen"]),
+});
+
+export async function PATCH(req: Request) {
+  const session = await getServerSession(authOptions);
+  // Only MANAGER can update feedback status
+  // @ts-expect-error custom role
+  const role: string | undefined = session?.user?.role;
+  if (role !== "MANAGER") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const raw = await req.text();
+  let body: any = null;
+  try { body = raw ? JSON.parse(raw) : null; } catch { body = null; }
+  const parsed = UpdateFeedbackSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid data", details: parsed.error.flatten() }, { status: 400 });
+  }
+  const { id, action } = parsed.data;
+  try {
+    const now = new Date();
+    let data: any = {};
+    if (action === "read") data = { status: "READ", readAt: now };
+    if (action === "close") data = { status: "CLOSED", closedAt: now, readAt: now };
+    if (action === "reopen") data = { status: "NEW", readAt: null, closedAt: null };
+    const updated = await prisma.feedback.update({ where: { id }, data });
+    return NextResponse.json({ feedback: updated });
+  } catch (err) {
+    console.error("/api/feedback PATCH error", err);
+    return NextResponse.json({ error: "Update failed" }, { status: 500 });
   }
 }

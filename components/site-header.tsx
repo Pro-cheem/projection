@@ -77,13 +77,12 @@ export default function SiteHeader() {
     const onUpdateOrders = () => readOrders();
     window.addEventListener("orders:updated", onUpdateOrders);
 
-    // Feedback count (manager only)
+    // Feedback count (manager/admin): attempt fetch; 403 will hide
     let fbTimer: any;
     const readFeedback = async () => {
       try {
-        const role = (session?.user as any)?.role;
-        if (role !== 'MANAGER') { setFeedbackCount(null); return; }
         const res = await fetch('/api/feedback?action=count', { cache: 'no-store' });
+        if (res.status === 403) { setFeedbackCount(null); return; }
         if (!res.ok) return;
         const j = await res.json();
         setFeedbackCount(typeof j?.count === 'number' ? j.count : null);
@@ -169,7 +168,7 @@ export default function SiteHeader() {
                 )}
               </a>
             )}
-            {session && ((session.user as any)?.role === 'MANAGER') && (
+            {session && ((((session.user as any)?.role === 'MANAGER') || ((session.user as any)?.role === 'ADMIN')) || (typeof feedbackCount === 'number')) && (
               <a href="/feedback/manage" className="relative rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">
                 الشكاوي
                 {feedbackCount !== null && (
@@ -187,6 +186,9 @@ export default function SiteHeader() {
                 </span>
               )}
             </a>
+            {session && ((session.user as any)?.role === 'REQUESTER') && (
+              <a href="/customers/me" className="rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">صفحتي</a>
+            )}
             {/* Employee quick links */}
             {session && ((session.user as any)?.role === 'EMPLOYEE') && (
               <>
@@ -238,7 +240,7 @@ export default function SiteHeader() {
                 )}
               </a>
             )}
-            {session && ((session.user as any)?.role === 'MANAGER') && (
+            {session && ((((session.user as any)?.role === 'MANAGER') || ((session.user as any)?.role === 'ADMIN')) || (typeof feedbackCount === 'number')) && (
               <a 
                 href="/feedback/manage" 
                 className="block px-4 py-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white flex justify-between items-center"
@@ -265,6 +267,15 @@ export default function SiteHeader() {
                 </span>
               )}
             </a>
+            {session && ((session.user as any)?.role === 'REQUESTER') && (
+              <a 
+                href="/customers/me" 
+                className="block px-4 py-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                صفحتي
+              </a>
+            )}
 
             {session && ((session.user as any)?.role === 'EMPLOYEE') && (
               <>

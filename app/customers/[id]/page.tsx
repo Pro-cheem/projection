@@ -31,6 +31,7 @@ type SummaryResponse = {
     collectionsTotal: string | number;
     balancesTotal: string | number;
   };
+  series?: Array<{ date: string; collection: number; balance: number }>;
 };
 
 export default function CustomerDetailPage() {
@@ -69,6 +70,27 @@ export default function CustomerDetailPage() {
       { label: "إجمالي التحصيل", value: Number(t?.collectionsTotal || 0).toLocaleString(undefined,{style:"currency",currency:"EGP"}) },
       { label: "إجمالي المديونيات", value: Number(t?.balancesTotal || 0).toLocaleString(undefined,{style:"currency",currency:"EGP"}) },
     ];
+  }, [data]);
+
+  const chart = useMemo(() => {
+    const s = data?.series || [];
+    if (!s.length) return null;
+    const width = 720, height = 200, pad = 28;
+    const xs = s.map((d) => new Date(d.date).getTime());
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const colVals = s.map(d=>d.collection), balVals = s.map(d=>d.balance);
+    const minY = 0;
+    const maxY = Math.max(1, Math.max(...colVals, ...balVals));
+    const scaleX = (t:number)=> pad + ((t - minX) / Math.max(1,(maxX-minX))) * (width - pad*2);
+    const scaleY = (v:number)=> height - pad - ((v - minY) / Math.max(1,(maxY-minY))) * (height - pad*2);
+    const toPath = (vals: Array<{x:number,y:number}>) => vals.map((p,i)=> `${i? 'L':'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const ptsCol = s.map(d=> ({ x: scaleX(new Date(d.date).getTime()), y: scaleY(d.collection) }));
+    const ptsBal = s.map(d=> ({ x: scaleX(new Date(d.date).getTime()), y: scaleY(d.balance) }));
+    const pathCol = toPath(ptsCol);
+    const pathBal = toPath(ptsBal);
+    const yTicks = 4;
+    const tickVals = Array.from({length:yTicks+1}, (_,i)=> Math.round((i/yTicks)*maxY));
+    return { width, height, pad, pathCol, pathBal, tickVals, scaleY, maxY };
   }, [data]);
 
   return (
@@ -113,6 +135,32 @@ export default function CustomerDetailPage() {
             <div className="font-medium">{data.customer.name}</div>
             <div className="text-sm text-muted-foreground">مديونية حالية: {Number(data.customer.totalDebt).toLocaleString(undefined,{style:"currency",currency:"EGP"})}</div>
             <div className="text-sm mt-1">{data.customer.phone || "—"} • {data.customer.email || "—"}</div>
+          </div>
+
+          <div className="rounded-xl border border-black/10 dark:border-white/10 p-4 mb-8">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-semibold">الرسم البياني: التحصيل والمديونية</h2>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="inline-flex items-center gap-1"><span className="inline-block w-3 h-1 bg-emerald-600"/> التحصيل</span>
+                <span className="inline-flex items-center gap-1"><span className="inline-block w-3 h-1 bg-amber-600"/> المديونية</span>
+              </div>
+            </div>
+            {chart ? (
+              <svg width={chart.width} height={chart.height} className="max-w-full">
+                {/* grid */}
+                {chart.tickVals.map((tv,i)=> (
+                  <g key={i}>
+                    <line x1={0} x2={chart.width} y1={chart.scaleY(tv)} y2={chart.scaleY(tv)} stroke="#eee" />
+                    <text x={4} y={chart.scaleY(tv)-2} fontSize="10" fill="#666">{tv.toLocaleString()}</text>
+                  </g>
+                ))}
+                {/* lines */}
+                <path d={chart.pathCol} fill="none" stroke="#059669" strokeWidth={2} />
+                <path d={chart.pathBal} fill="none" stroke="#d97706" strokeWidth={2} />
+              </svg>
+            ) : (
+              <div className="text-sm text-muted-foreground">لا توجد بيانات كافية للرسم البياني.</div>
+            )}
           </div>
 
           <section>

@@ -12,6 +12,7 @@ type Product = {
   price: string; // Prisma Decimal -> serialized as string
   images: { id: string; url: string }[];
   properties?: Record<string, any> | null;
+  stockQty?: number;
 };
 
 export default function Home() {
@@ -61,7 +62,12 @@ export default function Home() {
       try {
         const res = await fetch("/api/products");
         const data = await res.json();
-        if (mounted) setProducts(data.products || []);
+        if (mounted) {
+          const list = Array.isArray(data?.products) ? data.products : [];
+          // Hide products that are out of stock (stockQty <= 0 or missing)
+          const visible = list.filter((p: any) => Number(p?.stockQty ?? 0) > 0);
+          setProducts(visible);
+        }
       } catch (e) {
         console.error(e);
       } finally {

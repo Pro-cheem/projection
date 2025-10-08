@@ -4,6 +4,58 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
 
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions);
+  // @ts-expect-error custom role on session
+  const role = session?.user?.role as string | undefined;
+  if (!session || (role !== "ADMIN" && role !== "MANAGER")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json().catch(() => null);
+  const customerId = body?.customerId as string | undefined;
+  if (!customerId) {
+    return NextResponse.json({ error: "customerId is required" }, { status: 400 });
+  }
+
+  try {
+    const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+    if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+
+    // Decide email/username
+    const baseName = (customer.name || "customer").trim().replace(/\s+/g, " ");
+    const candidateEmail = customer.email && customer.email.includes("@") ? customer.email : undefined;
+    let email = candidateEmail || `customer-${customer.id}@local`;
+    // Ensure unique email
+    if (candidateEmail) {
+      const exists = await prisma.user.findUnique({ where: { email: candidateEmail } });
+      if (exists) {
+        email = `customer-${customer.id}@local`;
+      }
+    }
+
+    const passwordPlain = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-2);
+    const passwordHash = await bcrypt.hash(passwordPlain, 10);
+
+    const created = await prisma.user.create({
+      data: {
+        name: baseName,
+        email,
+        phone: customer.phone || undefined,
+        role: "REQUESTER" as any,
+        passwordHash,
+      },
+      select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
+    });
+
+    return NextResponse.json({ user: created, password: passwordPlain }, { status: 201 });
+  } catch (e: any) {
+    console.error("POST /api/admin/users create-from-customer error", e);
+    const msg = e?.code === 'P2002' ? 'Unique constraint violated (email/username)' : (e?.message || 'Create failed');
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   // @ts-expect-error custom role on session

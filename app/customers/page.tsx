@@ -16,6 +16,8 @@ export default function CustomersPage() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [creatingUserId, setCreatingUserId] = useState<string | null>(null);
+  const [userCreatedInfo, setUserCreatedInfo] = useState<{customerId:string; email:string; password:string} | null>(null);
 
   async function load() {
     setLoading(true);
@@ -33,6 +35,28 @@ export default function CustomersPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  async function createUserForCustomer(customerId: string) {
+    setCreatingUserId(customerId);
+    setError(null);
+    setUserCreatedInfo(null);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId }),
+      });
+      const data = await res.json().catch(()=>null);
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      if (data?.user && data?.password) {
+        setUserCreatedInfo({ customerId, email: String(data.user.email || ''), password: String(data.password) });
+      }
+    } catch (e:any) {
+      setError(e?.message || 'Failed to create user');
+    } finally {
+      setCreatingUserId(null);
+    }
+  }
 
   async function onCreate() {
     setSubmitting(true);
@@ -74,9 +98,10 @@ export default function CustomersPage() {
 
       <div className="rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 overflow-hidden">
         <div className="grid grid-cols-12 gap-2 px-4 py-3 text-sm font-medium border-b border-black/10 dark:border-white/10">
-          <div className="col-span-4">Name</div>
+          <div className="col-span-3">Name</div>
           <div className="col-span-4">Contact</div>
-          <div className="col-span-4 text-right">Total Debt</div>
+          <div className="col-span-3 text-right">Total Debt</div>
+          <div className="col-span-2 text-right">Actions</div>
         </div>
         {loading ? (
           <div className="p-4 text-sm text-muted-foreground">Loading…</div>
@@ -84,10 +109,22 @@ export default function CustomersPage() {
           <div className="p-4 text-sm text-muted-foreground">No customers</div>
         ) : (
           customers.map(c => (
-            <div key={c.id} className="grid grid-cols-12 gap-2 px-4 py-2 border-b border-black/5 dark:border-white/5">
-              <div className="col-span-4 text-sm">{c.name}</div>
+            <div key={c.id} className="grid grid-cols-12 gap-2 px-4 py-2 border-b border-black/5 dark:border-white/5 items-center">
+              <div className="col-span-3 text-sm"><a href={`/customers/${c.id}`} className="underline hover:no-underline">{c.name}</a></div>
               <div className="col-span-4 text-sm">{c.email || "-"} {c.phone ? `• ${c.phone}` : ""}</div>
-              <div className="col-span-4 text-right text-sm">{Number(c.totalDebt).toLocaleString(undefined,{style:"currency",currency:"EGP"})}</div>
+              <div className="col-span-3 text-right text-sm">{Number(c.totalDebt).toLocaleString(undefined,{style:"currency",currency:"EGP"})}</div>
+              <div className="col-span-2 text-right">
+                <button onClick={()=>createUserForCustomer(c.id)} disabled={creatingUserId===c.id} className="rounded border border-black/10 dark:border-white/10 px-2 py-1 text-xs">
+                  {creatingUserId===c.id? 'Creating…' : 'Create User'}
+                </button>
+                {userCreatedInfo && userCreatedInfo.customerId===c.id && (
+                  <div className="mt-1 text-xs text-right">
+                    <div className="text-emerald-700 dark:text-emerald-300">User created</div>
+                    <div className="font-mono">Email: {userCreatedInfo.email}</div>
+                    <div className="font-mono">Password: {userCreatedInfo.password}</div>
+                  </div>
+                )}
+              </div>
             </div>
           ))
         )}

@@ -34,6 +34,7 @@ export async function GET(
   const role: string | undefined = session.user?.role;
   // @ts-expect-error id on session
   const sessionUserId: string | undefined = session.user?.id || (session.user as any)?.sub;
+  const sessionEmail: string | undefined = (session.user as any)?.email;
 
   if (!id) return Response.json({ error: "Missing id" }, { status: 400 });
 
@@ -41,8 +42,9 @@ export async function GET(
     const customer = await prisma.customer.findUnique({ where: { id }, select: { id: true, name: true, email: true, phone: true, ownerId: true, totalDebt: true } });
     if (!customer) return Response.json({ error: "Not found" }, { status: 404 });
 
-    // Authorization: ADMIN/MANAGER or the owner rep of the customer.
-    if (!(role === "ADMIN" || role === "MANAGER" || (sessionUserId && sessionUserId === customer.ownerId))) {
+    // Authorization: ADMIN/MANAGER, the owner rep, or the REQUESTER whose email matches the customer's email
+    const requesterSelf = role === "REQUESTER" && sessionEmail && customer.email && sessionEmail.toLowerCase() === customer.email.toLowerCase();
+    if (!(role === "ADMIN" || role === "MANAGER" || (sessionUserId && sessionUserId === customer.ownerId) || requesterSelf)) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -63,6 +65,17 @@ export async function GET(
       _count: { _all: true },
     });
 
+    // Build daily series for chart (collections and balances per day)
+    const seriesMap: Record<string, { date: string; collection: number; balance: number }> = {};
+    for (const inv of invoices) {
+      const d = new Date(inv.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if (!seriesMap[key]) seriesMap[key] = { date: key, collection: 0, balance: 0 };
+      seriesMap[key].collection += Number(inv.collection || 0);
+      seriesMap[key].balance += Number(inv.balance || 0);
+    }
+    const series = Object.values(seriesMap).sort((a,b)=> a.date.localeCompare(b.date));
+
     return Response.json({
       ok: true,
       customer,
@@ -73,6 +86,7 @@ export async function GET(
         collectionsTotal: agg._sum.collection || 0,
         balancesTotal: agg._sum.balance || 0,
       },
+      series,
     });
   } catch (err) {
     console.error("/api/customers/[id]/summary GET error", err);

@@ -46,9 +46,9 @@ export async function GET() {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  // Allow only EMPLOYEE or MANAGER to create customers
+  // Allow EMPLOYEE, MANAGER, or ADMIN to create customers
   const role = (session.user as any).role as string | undefined;
-  if (role !== "EMPLOYEE" && role !== "MANAGER") {
+  if (role !== "EMPLOYEE" && role !== "MANAGER" && role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   // Resolve current user id reliably
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
         phone: body.phone ? String(body.phone) : null,
         ownerId: userId,
       },
-      select: { id: true, name: true, email: true, phone: true },
+      select: { id: true, name: true, email: true, phone: true, totalDebt: true },
     });
     return NextResponse.json({ customer: created }, { status: 201 });
   } catch (e) {

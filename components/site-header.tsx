@@ -194,6 +194,9 @@ export default function SiteHeader() {
                 <a href="/reports" className="rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">التقارير</a>
               </>
             )}
+            {session && ((session.user as any)?.role === 'MANAGER') && (
+              <a href="/reports" className="rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">التقارير</a>
+            )}
             {session && (
               <>
                 {((session.user as any)?.role === 'EMPLOYEE' || (session.user as any)?.role === 'MANAGER' || (session.user as any)?.role === 'ADMIN') && (
@@ -280,6 +283,15 @@ export default function SiteHeader() {
                   التقارير
                 </a>
               </>
+            )}
+            {session && ((session.user as any)?.role === 'MANAGER') && (
+              <a 
+                href="/reports" 
+                className="block px-4 py-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                التقارير
+              </a>
             )}
 
             {session && ((session.user as any)?.role === 'EMPLOYEE' || (session.user as any)?.role === 'MANAGER' || (session.user as any)?.role === 'ADMIN') && (

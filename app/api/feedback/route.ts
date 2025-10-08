@@ -34,7 +34,7 @@ export async function GET(req: Request) {
   // Only MANAGER can read feedback
   // @ts-expect-error custom role
   const role: string | undefined = session?.user?.role;
-  if (role !== "MANAGER") {
+  if (role !== "MANAGER" && role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { searchParams } = new URL(req.url);

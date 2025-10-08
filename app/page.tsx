@@ -163,12 +163,11 @@ export default function Home() {
                 <div key={p.id} className="rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md transition-shadow">
                   <a href={`/products/${p.id}`} className="block">
                     {p.images?.[0]?.url ? (
-                      <Image
+                      <img
                         src={p.images[0].url}
                         alt={p.name}
-                        width={1000}
-                        height={144}
-                        className="w-full h-36 object-cover rounded-t-xl"
+                        loading="lazy"
+                        className="w-full h-auto max-h-64 object-contain rounded-t-xl bg-white dark:bg-zinc-900"
                       />
                     ) : (
                       <div className="w-full h-36 bg-gradient-to-br from-slate-200 to-slate-100 dark:from-zinc-800 dark:to-zinc-900 rounded-t-xl" />

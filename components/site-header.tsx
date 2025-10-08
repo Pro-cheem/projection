@@ -196,7 +196,7 @@ export default function SiteHeader() {
                 <a href="/reports" className="rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">التقارير</a>
               </>
             )}
-            {session && ((session.user as any)?.role === 'MANAGER') && (
+            {session && (((session.user as any)?.role === 'MANAGER') || ((session.user as any)?.role === 'ADMIN')) && (
               <a href="/reports" className="rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-3 py-1.5 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white">التقارير</a>
             )}
             {session && (

@@ -22,30 +22,40 @@ export async function POST(req: Request) {
     const customer = await prisma.customer.findUnique({ where: { id: customerId } });
     if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
 
-    // Decide email/username
-    const baseName = (customer.name || "customer").trim().replace(/\s+/g, " ");
-    const candidateEmail = customer.email && customer.email.includes("@") ? customer.email : undefined;
-    let email = candidateEmail || `customer-${customer.id}@local`;
-    // Ensure unique email
-    if (candidateEmail) {
-      const exists = await prisma.user.findUnique({ where: { email: candidateEmail } });
-      if (exists) {
-        email = `customer-${customer.id}@local`;
-      }
+    // Decide email as name@projection.com (with slug) and ensure uniqueness
+    const baseName = (customer.name || "customer").trim();
+    const slug = baseName
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[^a-z0-9]+/g, '.')
+      .replace(/^\.+|\.+$/g, '')
+      .replace(/\.\.+/g, '.');
+    const baseLocal = slug || `customer-${customer.id.slice(0,6)}`;
+    const domain = 'projection.com';
+    let email = `${baseLocal}@${domain}`;
+    let suffix = 1;
+    while (await prisma.user.findUnique({ where: { email } })) {
+      email = `${baseLocal}${suffix}@${domain}`;
+      suffix += 1;
     }
 
     const passwordPlain = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-2);
     const passwordHash = await bcrypt.hash(passwordPlain, 10);
 
-    const created = await prisma.user.create({
-      data: {
-        name: baseName,
-        email,
-        phone: customer.phone || undefined,
-        role: "REQUESTER" as any,
-        passwordHash,
-      },
-      select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
+    const created = await prisma.$transaction(async (tx) => {
+      const u = await tx.user.create({
+        data: {
+          name: baseName,
+          email,
+          phone: customer.phone || undefined,
+          role: "REQUESTER" as any,
+          passwordHash,
+        },
+        select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
+      });
+      // Sync customer email to the created login email for persistence/visibility
+      await tx.customer.update({ where: { id: customerId }, data: { email: u.email } });
+      return u;
     });
 
     return NextResponse.json({ user: created, password: passwordPlain }, { status: 201 });
@@ -93,6 +103,37 @@ export async function PATCH(req: Request) {
   }
 
   const body = await req.json().catch(() => null);
+
+  // Branch: update customer login email (sync customer.email and user.email)
+  if (body?.customerId && typeof body?.email === 'string' && body.email.trim()) {
+    const customerId = String(body.customerId);
+    const newEmail = String(body.email).toLowerCase();
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        const cust = await tx.customer.findUnique({ where: { id: customerId }, select: { id: true, email: true } });
+        if (!cust) throw new Error('Customer not found');
+        // Unique email check for Users table
+        const conflict = await tx.user.findUnique({ where: { email: newEmail } });
+        if (conflict) throw Object.assign(new Error('Email already in use'), { code: 'EMAIL_TAKEN' });
+        // Update user.email if a user exists with old customer email
+        if (cust.email) {
+          const existingUser = await tx.user.findUnique({ where: { email: cust.email } });
+          if (existingUser) {
+            await tx.user.update({ where: { id: existingUser.id }, data: { email: newEmail } });
+          }
+        }
+        // Update customer email to newEmail
+        const updatedCustomer = await tx.customer.update({ where: { id: customerId }, data: { email: newEmail }, select: { id: true, name: true, email: true, phone: true, totalDebt: true } });
+        return updatedCustomer;
+      });
+      return NextResponse.json({ customer: result, ok: true });
+    } catch (e: any) {
+      if (e?.code === 'EMAIL_TAKEN') return NextResponse.json({ error: 'Email already in use' }, { status: 400 });
+      console.error('PATCH /api/admin/users update customer email', e);
+      return NextResponse.json({ error: 'Update failed' }, { status: 500 });
+    }
+  }
+
   if (!body?.userId) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
   }

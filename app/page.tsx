@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { useToast } from "@/components/toast-provider";
 
@@ -10,13 +11,18 @@ type Product = {
   capacity: string;
   price: string; // Prisma Decimal -> serialized as string
   images: { id: string; url: string }[];
+  properties?: Record<string, any> | null;
 };
 
 export default function Home() {
+  const { data: session } = useSession();
+  // @ts-expect-error custom role on session
+  const role: string | undefined = session?.user?.role;
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [query, setQuery] = useState("");
   const { toast } = useToast();
+  const [fbCount, setFbCount] = useState<number | null>(null);
 
   function addToCart(p: Product) {
     try {
@@ -67,6 +73,24 @@ export default function Home() {
     };
   }, []);
 
+  // Load feedback count for MANAGER
+  useEffect(() => {
+    let mounted = true;
+    if (role === "MANAGER") {
+      (async () => {
+        try {
+          const res = await fetch("/api/feedback?action=count", { cache: "no-store" });
+          if (!res.ok) return;
+          const j = await res.json();
+          if (mounted) setFbCount(typeof j?.count === 'number' ? j.count : null);
+        } catch {}
+      })();
+    } else {
+      setFbCount(null);
+    }
+    return () => { mounted = false; };
+  }, [role]);
+
   // Home page is focused on store products only; removed auth-specific quick actions
 
   return (
@@ -75,9 +99,9 @@ export default function Home() {
         {/* Store-focused homepage: removed login/roles and quick actions */}
         <section id="products" className="lg:col-span-3">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
-            <div>
-              <h2 className="text-2xl font-semibold">Products</h2>
-              <p className="text-sm text-muted-foreground">Browse available products.</p>
+            <div className="text-right">
+              <h2 className="text-2xl font-semibold">المنتجات</h2>
+              <p className="text-sm text-muted-foreground">تصفح المنتجات المتاحة.</p>
             </div>
             <div className="w-full sm:w-80">
               <label htmlFor="product-search" className="sr-only">Search products</label>
@@ -94,6 +118,21 @@ export default function Home() {
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400">🔍</span>
               </div>
             </div>
+            <div className="sm:ml-auto text-right">
+              <a href="/feedback" className="inline-block rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm">
+                إرسال ملاحظة/شكوى
+              </a>
+            </div>
+            {role === "MANAGER" && (
+              <div className="text-right">
+                <a href="/feedback/manage" className="inline-flex items-center gap-2 rounded-lg border border-black/10 dark:border-white/10 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10">
+                  <span>الشكاوي</span>
+                  <span className="inline-flex items-center justify-center min-w-6 h-6 px-2 rounded-full bg-emerald-600 text-white text-xs font-medium">
+                    {fbCount === null ? '—' : fbCount}
+                  </span>
+                </a>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {loadingProducts ? (
@@ -128,9 +167,59 @@ export default function Home() {
                     ) : (
                       <div className="w-full h-36 bg-gradient-to-br from-slate-200 to-slate-100 dark:from-zinc-800 dark:to-zinc-900 rounded-t-xl" />
                     )}
-                    <div className="p-4">
+                    <div className="p-4 text-right">
                       <h3 className="font-medium leading-tight">{p.name}</h3>
-                      <p className="text-sm text-muted-foreground">Capacity: {p.capacity}</p>
+                      <p className="text-sm text-muted-foreground">السعة: {p.capacity}</p>
+                      {/* Composition as table; 2 columns when items >= 4 */}
+                      {(p.properties?.composition || p.properties?.N || p.properties?.P || p.properties?.K) && ( ()=>{
+                        const rawLines = p.properties?.composition
+                          ? String(p.properties.composition).split(/\r?\n/).map(l=>l.trim()).filter(Boolean)
+                          : [
+                              p.properties?.K ? `K ${String(p.properties.K)}` : null,
+                              p.properties?.P ? `P ${String(p.properties.P)}` : null,
+                              p.properties?.N ? `N ${String(p.properties.N)}` : null,
+                            ].filter(Boolean) as string[];
+                        const rows = rawLines.map((l)=>{
+                          const m = l.match(/^\s*([A-Za-z\u0600-\u06FF]+)\s*:?\s*(\d+(?:[.,]\d+)?)%?\s*$/);
+                          if (m) return { k: m[1], v: `${m[2].replace(',', '.') }%` };
+                          // fallback: split by spaces -> last token maybe percentage/value
+                          const parts = l.split(/\s+/);
+                          if (parts.length > 1) return { k: parts.slice(0,-1).join(' '), v: parts[parts.length-1] };
+                          return { k: l, v: '' };
+                        });
+                        const twoCols = rows.length >= 4;
+                        const mid = twoCols ? Math.ceil(rows.length/2) : rows.length;
+                        const colA = rows.slice(0, mid);
+                        const colB = rows.slice(mid);
+                        const Table = ({data}:{data:{k:string;v:string}[]}) => (
+                          <table className="w-full text-xs text-muted-foreground">
+                            <tbody>
+                              {data.map((r, i)=> (
+                                <tr key={i} className="border-b border-black/5 dark:border-white/10 last:border-b-0">
+                                  <td className="py-0.5 pl-2 text-right">{r.k}</td>
+                                  <td className="py-0.5 pr-0 text-foreground font-medium text-left">{r.v}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        );
+                        return (
+                          <div className="mt-2">
+                            <div className="flex items-center gap-2 mb-1 pb-1 border-b border-black/10 dark:border-white/10 justify-end">
+                              <span className="text-xs font-semibold">التركيب</span>
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            </div>
+                            {twoCols ? (
+                              <div className="grid grid-cols-2 gap-4">
+                                <Table data={colA} />
+                                <Table data={colB} />
+                              </div>
+                            ) : (
+                              <Table data={colA} />
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </a>
                   <div className="px-4 pb-4 -mt-2">

@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react";
 type Media = { id: string; url: string; blurDataUrl?: string };
 
 // Helpers and PinchZoom component (top-level)
-function dist(a: Touch, b: Touch) { const dx = a.clientX - b.clientX; const dy = a.clientY - b.clientY; return Math.hypot(dx, dy); }
+function dist(a: any, b: any) { const dx = a.clientX - b.clientX; const dy = a.clientY - b.clientY; return Math.hypot(dx, dy); }
 function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)); }
 
 function PinchZoom({ src, alt }: { src: string; alt: string }) {
@@ -60,9 +60,21 @@ function PinchZoom({ src, alt }: { src: string; alt: string }) {
   };
 
   return (
-    <div ref={containerRef} className="relative overflow-hidden select-none" style={{ touchAction: "none" }} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-      <img ref={imgRef} src={src} alt={alt} className="max-w-full h-auto mx-auto"
-        style={{ transform: `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`, transformOrigin: "center center", willChange: "transform" }} />
+    <div
+      ref={containerRef}
+      className="relative overflow-hidden select-none flex justify-center"
+      style={{ touchAction: "none", maxHeight: "80vh" }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      <img
+        ref={imgRef}
+        src={src}
+        alt={alt}
+        className="max-w-full h-auto max-h-[80vh] mx-auto"
+        style={{ transform: `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`, transformOrigin: "center center", willChange: "transform" }}
+      />
       {scale > 1 && (
         <button type="button" className="absolute top-2 left-2 rounded-md bg-black/60 text-white text-xs px-2 py-1"
           onClick={() => { setScale(1); setTx(0); setTy(0); last.current = { scale: 1, tx: 0, ty: 0 }; }}>
@@ -115,6 +127,7 @@ export default function ProductDetailPage() {
   const canEdit = useMemo(() => role === "ADMIN" || role === "MANAGER", [role]);
   const canEditProps = useMemo(() => role === "MANAGER", [role]);
   const canViewMovements = useMemo(() => role === "MANAGER", [role]);
+  const canViewStock = useMemo(() => role === "EMPLOYEE" || role === "MANAGER" || role === "ADMIN", [role]);
 
   useEffect(() => {
     if (!id) return;
@@ -192,7 +205,9 @@ export default function ProductDetailPage() {
               <h1 className="text-xl font-semibold mb-1">{product.name}</h1>
               <div className="text-sm text-muted-foreground mb-3">السعة: {product.capacity}</div>
               <div className="font-semibold mb-4">{Number(product.price).toLocaleString(undefined,{style:"currency",currency:"EGP"})}</div>
-              <div className="text-sm mb-2">المتوفر بالمخزون: {product.stockQty}</div>
+              {canViewStock && (
+                <div className="text-sm mb-2">المتوفر بالمخزون: {product.stockQty}</div>
+              )}
               <div className="mt-3">
                 <div className="text-sm text-muted-foreground mb-1">ملاحظات</div>
                 {canEdit ? (
@@ -342,53 +357,54 @@ export default function ProductDetailPage() {
                 ) : (
                   <div className="space-y-3 text-sm">
                     {/* التركيب */}
-                    {(product.properties?.composition || product.properties?.N || product.properties?.P || product.properties?.K) ? (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2 pb-1 border-b border-black/10 dark:border-white/10">
-                          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-                          <span className="text-base font-semibold">التركيب</span>
+                    {(product.properties?.composition || product.properties?.N || product.properties?.P || product.properties?.K) ? (()=>{
+                      const rawLines = product.properties?.composition
+                        ? String(product.properties.composition).split(/\r?\n/).map(l=>l.trim()).filter(Boolean)
+                        : [
+                            product.properties?.K ? `K ${String(product.properties.K)}` : null,
+                            product.properties?.P ? `P ${String(product.properties.P)}` : null,
+                            product.properties?.N ? `N ${String(product.properties.N)}` : null,
+                          ].filter(Boolean) as string[];
+                      const rows = rawLines.map((l)=>{
+                        const m = l.match(/^\s*([A-Za-z\u0600-\u06FF]+)\s*:?\s*(\d+(?:[.,]\d+)?)%?\s*$/);
+                        if (m) return { k: m[1], v: `${m[2].replace(',', '.') }%` };
+                        const parts = l.split(/\s+/);
+                        if (parts.length > 1) return { k: parts.slice(0,-1).join(' '), v: parts[parts.length-1] };
+                        return { k: l, v: '' };
+                      });
+                      const twoCols = rows.length >= 4;
+                      const mid = twoCols ? Math.ceil(rows.length/2) : rows.length;
+                      const colA = rows.slice(0, mid);
+                      const colB = rows.slice(mid);
+                      const Table = ({data}:{data:{k:string;v:string}[]}) => (
+                        <table className="w-full text-xs text-muted-foreground">
+                          <tbody>
+                            {data.map((r, i)=> (
+                              <tr key={i} className="border-b border-black/5 dark:border-white/10 last:border-b-0">
+                                <td className="py-1 pl-2 text-right">{r.k}</td>
+                                <td className="py-1 pr-0 text-foreground font-medium text-left">{r.v}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      );
+                      return (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2 pb-1 border-b border-black/10 dark:border-white/10 justify-end">
+                            <span className="text-base font-semibold">التركيب</span>
+                            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                          </div>
+                          {twoCols ? (
+                            <div className="grid grid-cols-2 gap-4">
+              					<Table data={colA} />
+              					<Table data={colB} />
+              				</div>
+                          ) : (
+                            <Table data={colA} />
+                          )}
                         </div>
-                        {product.properties?.composition ? (
-                          <ul className="list-disc list-inside space-y-1">
-                            {String(product.properties.composition)
-                              .split(/\r?\n/)
-                              .map((l)=>l.trim())
-                              .filter((l)=>l.length>0)
-                              .map((l, i)=>{
-                                const m = l.match(/^\s*([A-Za-z\u0600-\u06FF]+)\s*:?\s*(\d+(?:[.,]\d+)?)%?\s*$/);
-                                if (m) {
-                                  const el = m[1];
-                                  const pct = m[2].replace(',', '.');
-                                  return (
-                                    <li key={i} className="flex items-center justify-between gap-4">
-                                      <span>{el}</span>
-                                      <span className="font-medium">{pct}%</span>
-                                    </li>
-                                  );
-                                }
-                                return (<li key={i}>{l}</li>);
-                              })}
-                          </ul>
-                        ) : (
-                          <ul className="list-disc list-inside space-y-1">
-                            {[
-                              product.properties?.K ? { k: 'K', v: String(product.properties.K) } : null,
-                              product.properties?.P ? { k: 'P', v: String(product.properties.P) } : null,
-                              product.properties?.N ? { k: 'N', v: String(product.properties.N) } : null,
-                            ].filter(Boolean).map((item:any, i:number)=>{
-                              const m = String(item.v).match(/^(\d+(?:[.,]\d+)?)%?$/);
-                              const pct = m ? m[1].replace(',', '.') : String(item.v);
-                              return (
-                                <li key={i} className="flex items-center justify-between gap-4">
-                                  <span>{item.k}</span>
-                                  <span className="font-medium">{pct}{m? '%':''}</span>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        )}
-                      </div>
-                    ) : null}
+                      );
+                    })() : null}
                     {product.properties?.features ? (
                       <div>
                         <div className="flex items-center gap-2 mb-2 pb-1 border-b border-black/10 dark:border-white/10">

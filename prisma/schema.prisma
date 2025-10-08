@@ -255,3 +255,14 @@ model VerificationToken {
 
   @@unique([identifier, token])
 }
+
+// Visitor feedback (notes/complaints)
+model Feedback {
+  id        String   @id @default(cuid())
+  name      String?
+  phone     String?
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

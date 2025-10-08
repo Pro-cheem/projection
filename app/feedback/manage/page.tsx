@@ -9,7 +9,7 @@ export default function ManageFeedbackPage() {
   const { data: session, status } = useSession();
   // @ts-expect-error custom role
   const role: string | undefined = session?.user?.role;
-  const canView = useMemo(() => role === "MANAGER", [role]);
+  const canView = useMemo(() => role === "MANAGER" || role === "ADMIN", [role]);
   const [items, setItems] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

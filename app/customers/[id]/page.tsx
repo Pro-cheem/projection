@@ -35,7 +35,8 @@ type SummaryResponse = {
 };
 
 export default function CustomerDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams() as any;
+  const id: string = typeof params?.id === 'string' ? params.id : Array.isArray(params?.id) ? params.id[0] : '';
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [loading, setLoading] = useState(true);
@@ -102,11 +103,6 @@ export default function CustomerDetailPage() {
           <span>إلى</span>
           <input type="date" value={to} onChange={(e)=>setTo(e.target.value)} className="rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-1" />
           <button onClick={load} className="rounded bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-sm">تطبيق</button>
-          <a
-            href={`/invoice?customer=${id}`}
-            className="rounded bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-sm"
-            title="إنشاء فاتورة جديدة لهذا العميل"
-          >إنشاء فاتورة</a>
         </div>
       </div>
 

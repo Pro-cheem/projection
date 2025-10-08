@@ -143,10 +143,11 @@ export default function AdminUsersTable({
 
   return (
     <div className="space-y-10">
+      {/* Managers first */}
       <section>
-        <h2 className="text-xl font-semibold mb-3">Pending Customers</h2>
-        {requesters.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No pending customers.</p>
+        <h2 className="text-xl font-semibold mb-3">Managers</h2>
+        {managers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No managers.</p>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
             <table className="w-full text-sm">
@@ -156,12 +157,18 @@ export default function AdminUsersTable({
                   <th className="text-left p-3">Username</th>
                   <th className="text-left p-3">Email</th>
                   <th className="text-left p-3">Phone</th>
-                  <th className="text-right p-3">Action</th>
+                  <th className="text-right p-3">معاملات</th>
                 </tr>
               </thead>
               <tbody>
-                {requesters.map((u) => (
-                  <Row key={u.id} user={u} />
+                {managers.map((u) => (
+                  <tr key={u.id} className="border-t border-black/10 dark:border-white/10">
+                    <td className="p-3">{formatName(u as any)}</td>
+                    <td className="p-3">{formatVal((u as any).username)}</td>
+                    <td className="p-3">{formatVal((u as any).email)}</td>
+                    <td className="p-3">{formatVal((u as any).phone)}</td>
+                    <td className="p-3 text-right"><a href={`/reps/${u.id}`} className="underline text-blue-600 text-xs">معاملات</a></td>
+                  </tr>
                 ))}
               </tbody>
             </table>
@@ -169,6 +176,7 @@ export default function AdminUsersTable({
         )}
       </section>
 
+      {/* Employees (Representatives) second */}
       <section>
         <h2 className="text-xl font-semibold mb-3">Representatives</h2>
         <div className="flex items-center gap-2 mb-3">
@@ -209,10 +217,11 @@ export default function AdminUsersTable({
         )}
       </section>
 
+      {/* Customers last */}
       <section>
-        <h2 className="text-xl font-semibold mb-3">Managers</h2>
-        {managers.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No managers.</p>
+        <h2 className="text-xl font-semibold mb-3">Pending Customers</h2>
+        {requesters.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No pending customers.</p>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
             <table className="w-full text-sm">
@@ -222,18 +231,12 @@ export default function AdminUsersTable({
                   <th className="text-left p-3">Username</th>
                   <th className="text-left p-3">Email</th>
                   <th className="text-left p-3">Phone</th>
-                  <th className="text-right p-3">معاملات</th>
+                  <th className="text-right p-3">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {managers.map((u) => (
-                  <tr key={u.id} className="border-t border-black/10 dark:border-white/10">
-                    <td className="p-3">{formatName(u as any)}</td>
-                    <td className="p-3">{formatVal((u as any).username)}</td>
-                    <td className="p-3">{formatVal((u as any).email)}</td>
-                    <td className="p-3">{formatVal((u as any).phone)}</td>
-                    <td className="p-3 text-right"><a href={`/reps/${u.id}`} className="underline text-blue-600 text-xs">معاملات</a></td>
-                  </tr>
+                {requesters.map((u) => (
+                  <Row key={u.id} user={u} />
                 ))}
               </tbody>
             </table>

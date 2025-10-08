@@ -138,19 +138,31 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
   }
 
-  // If password present -> only MANAGER can update passwords
+  // If password present -> allow ADMIN or MANAGER to update passwords
   if (typeof body.password === "string" && body.password.length >= 4) {
-    if (role !== "MANAGER") {
+    if (!(role === "MANAGER" || role === "ADMIN")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     try {
       const passwordHash = await bcrypt.hash(String(body.password), 10);
-      const updated = await prisma.user.update({
-        where: { id: String(body.userId) },
-        data: { passwordHash },
-        select: { id: true, name: true, username: true, email: true, phone: true, role: true },
-      });
-      return NextResponse.json({ user: updated, ok: true });
+      // Support update by userId OR by customerId (look up user by customer's email)
+      if (body.userId) {
+        const updated = await prisma.user.update({
+          where: { id: String(body.userId) },
+          data: { passwordHash },
+          select: { id: true, name: true, username: true, email: true, phone: true, role: true },
+        });
+        return NextResponse.json({ user: updated, ok: true });
+      }
+      if (body.customerId) {
+        const cust = await prisma.customer.findUnique({ where: { id: String(body.customerId) }, select: { email: true } });
+        if (!cust?.email) return NextResponse.json({ error: "Customer has no login email" }, { status: 400 });
+        const user = await prisma.user.findUnique({ where: { email: cust.email } });
+        if (!user) return NextResponse.json({ error: "User not found for customer email" }, { status: 404 });
+        const updated = await prisma.user.update({ where: { id: user.id }, data: { passwordHash }, select: { id: true, name: true, username: true, email: true, phone: true, role: true } });
+        return NextResponse.json({ user: updated, ok: true });
+      }
+      return NextResponse.json({ error: "userId or customerId required for password update" }, { status: 400 });
     } catch (e) {
       console.error("PATCH /api/admin/users password error", e);
       return NextResponse.json({ error: "Password update failed" }, { status: 500 });

@@ -58,9 +58,9 @@ export default function InvoiceForm() {
           if (proRes.error) throw new Error(proRes.error);
           if (cusRes.error) throw new Error(cusRes.error);
           
-          // تحقق من صحة بيانات المنتجات
+          // تحقق من صحة بيانات المنتجات + إظهار المنتجات المتاحة فقط (stockQty > 0)
           const validProducts = (proRes.products || []).filter((p: any) => 
-            p && p.id && p.name && typeof p.price !== 'undefined'
+            p && p.id && p.name && typeof p.price !== 'undefined' && Number(p?.stockQty ?? 0) > 0
           );
           
           setProducts(validProducts.map((p: any) => ({

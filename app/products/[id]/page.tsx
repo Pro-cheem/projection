@@ -1,11 +1,77 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 type Media = { id: string; url: string; blurDataUrl?: string };
+
+// Helpers and PinchZoom component (top-level)
+function dist(a: Touch, b: Touch) { const dx = a.clientX - b.clientX; const dy = a.clientY - b.clientY; return Math.hypot(dx, dy); }
+function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)); }
+
+function PinchZoom({ src, alt }: { src: string; alt: string }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [scale, setScale] = useState(1);
+  const [tx, setTx] = useState(0);
+  const [ty, setTy] = useState(0);
+  const last = useRef({ scale: 1, tx: 0, ty: 0 });
+  const startDist = useRef<number | null>(null);
+  const panStart = useRef<{ x: number; y: number } | null>(null);
+
+  function applyBounds(nx: number, ny: number, sc: number) {
+    const cont = containerRef.current; const img = imgRef.current;
+    if (!cont || !img) return { x: nx, y: ny };
+    const rect = cont.getBoundingClientRect();
+    const maxX = Math.max(0, (img.naturalWidth * sc - rect.width) / 2 + 40);
+    const maxY = Math.max(0, (img.naturalHeight * sc - rect.height) / 2 + 40);
+    return { x: clamp(nx, -maxX, maxX), y: clamp(ny, -maxY, maxY) };
+  }
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      startDist.current = dist(e.touches[0], e.touches[1]);
+      last.current = { scale, tx, ty };
+    } else if (e.touches.length === 1) {
+      panStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      last.current = { scale, tx, ty };
+    }
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && startDist.current) {
+      e.preventDefault();
+      const d = dist(e.touches[0], e.touches[1]);
+      const s = clamp((d / startDist.current) * last.current.scale, 1, 4);
+      setScale(s);
+    } else if (e.touches.length === 1 && panStart.current && scale > 1) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - panStart.current.x;
+      const dy = e.touches[0].clientY - panStart.current.y;
+      const bounded = applyBounds(last.current.tx + dx, last.current.ty + dy, scale);
+      setTx(bounded.x); setTy(bounded.y);
+    }
+  };
+  const onTouchEnd = () => {
+    if (scale < 1.02) { setScale(1); setTx(0); setTy(0); last.current = { scale: 1, tx: 0, ty: 0 }; }
+    else { const b = applyBounds(tx, ty, scale); setTx(b.x); setTy(b.y); last.current = { scale, tx: b.x, ty: b.y }; }
+    startDist.current = null; panStart.current = null;
+  };
+
+  return (
+    <div ref={containerRef} className="relative overflow-hidden select-none" style={{ touchAction: "none" }} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+      <img ref={imgRef} src={src} alt={alt} className="max-w-full h-auto mx-auto"
+        style={{ transform: `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`, transformOrigin: "center center", willChange: "transform" }} />
+      {scale > 1 && (
+        <button type="button" className="absolute top-2 left-2 rounded-md bg-black/60 text-white text-xs px-2 py-1"
+          onClick={() => { setScale(1); setTx(0); setTy(0); last.current = { scale: 1, tx: 0, ty: 0 }; }}>
+          إعادة الضبط
+        </button>
+      )}
+    </div>
+  );
+}
 
 type Product = {
   id: string;
@@ -92,17 +158,9 @@ export default function ProductDetailPage() {
         <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <div className="lg:col-span-2">
-              <div className="rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 overflow-hidden">
+              <div className="rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 p-2">
                 {product.images?.[activeIdx]?.url ? (
-                  <Image
-                    src={product.images[activeIdx].url}
-                    alt={product.name}
-                    width={1200}
-                    height={400}
-                    className="w-full h-64 object-cover"
-                    placeholder={product.images[activeIdx].blurDataUrl ? "blur" : undefined}
-                    blurDataURL={product.images[activeIdx].blurDataUrl || undefined}
-                  />
+                  <PinchZoom src={product.images[activeIdx].url} alt={product.name} />
                 ) : (
                   <div className="w-full h-64 bg-gradient-to-br from-slate-200 to-slate-100 dark:from-zinc-800 dark:to-zinc-900" />
                 )}

@@ -27,6 +27,7 @@ const nextConfig = {
   
   // ESLint configuration
   eslint: {
+    // Use the new ESLint CLI format
     ignoreDuringBuilds: true,
   },
   
@@ -52,7 +53,7 @@ const nextConfig = {
   
   // Experimental features
   experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'bcrypt'],
+    // Removed serverComponentsExternalPackages as it's now in serverExternalPackages above
   },
 };
 

@@ -74,9 +74,7 @@ export default function InvoiceForm() {
           const validCustomers = (cusRes.customers || []).filter((c: any) => c && c.id && c.name);
           setCustomers(validCustomers);
           
-          if (validProducts.length === 0) {
-            setError('No products available. Please add products first.');
-          }
+          // If no products, allow collection-only invoices (do not block the form)
           if (validCustomers.length === 0) {
             setError(prev => prev ? prev + ' No customers available. Please add customers first.' : 'No customers available. Please add customers first.');
           }

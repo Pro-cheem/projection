@@ -5,6 +5,21 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Singleton site configuration for homepage and about
+model SiteConfig {
+  id         String   @id @default("singleton")
+  hero1Url   String?
+  hero1Link  String?
+  hero2Url   String?
+  hero2Link  String?
+  hero3Url   String?
+  hero3Link  String?
+  aboutTitle String?
+  aboutBody  String?
+
+  updatedAt  DateTime @updatedAt
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")

@@ -9,6 +9,12 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const products = await prisma.product.findMany({
+      where: {
+        OR: [
+          { properties: { equals: null } as any },
+          { NOT: { properties: { path: ["archived"], equals: true } as any } },
+        ],
+      },
       orderBy: { name: "asc" },
       include: { images: true },
     });
@@ -60,6 +66,7 @@ const UpdateProductSchema = z.object({
   imageBlurDataUrl: z.string().min(1).nullable().optional(),
   // free-form properties edited by admin/manager only
   properties: z.record(z.string(), z.any()).nullable().optional(),
+  type: z.enum(["COMPANY","OTHER"]).optional(),
 });
 
 export async function PATCH(req: Request) {
@@ -78,14 +85,26 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Invalid data", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { id, name, capacity, price, stockQty, notes, imageUrl, imageBlurDataUrl, properties } = parsed.data;
+  const { id, name, capacity, price, stockQty, notes, imageUrl, imageBlurDataUrl, properties, type } = parsed.data;
   try {
-    const updated = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
+      // Load current properties for merging
+      const current = await tx.product.findUnique({ where: { id }, select: { properties: true } });
+      const mergedProps = (() => {
+        const base = (current?.properties ?? {}) as any;
+        let out = base && typeof base === 'object' ? { ...base } : {} as any;
+        if (properties !== undefined) {
+          if (properties === null) out = {};
+          else out = { ...out, ...(properties as any) };
+        }
+        if (type !== undefined) out.type = type;
+        return out;
+      })();
       if (imageUrl !== undefined) {
         // If provided null -> delete images. If provided string -> replace with new.
         await tx.media.deleteMany({ where: { productId: id, kind: "PRODUCT" } });
       }
-      const prod = await tx.product.update({
+      const updated = await tx.product.update({
         where: { id },
         data: {
           ...(name !== undefined ? { name } : {}),
@@ -93,14 +112,49 @@ export async function PATCH(req: Request) {
           ...(price !== undefined ? { price } : {}),
           ...(stockQty !== undefined ? { stockQty } : {}),
           ...(notes !== undefined ? { notes } : {}),
-          ...(properties !== undefined ? { properties: properties as any } : {}),
+          ...(properties !== undefined || type !== undefined ? { properties: mergedProps as any } : {}),
           ...(imageUrl ? { images: { create: [{ url: imageUrl, kind: "PRODUCT", blurDataUrl: imageBlurDataUrl || undefined }] } } : {}),
         },
         include: { images: true },
       });
-      return prod;
+
+      // If stock becomes zero, attempt auto-delete if safe (no linked invoice items)
+      const finalStock = stockQty !== undefined ? stockQty : updated.stockQty;
+      if (typeof finalStock === "number" && finalStock <= 0) {
+        const linkedCount = await tx.invoiceItem.count({ where: { productId: id } });
+        if (linkedCount === 0) {
+          await tx.media.deleteMany({ where: { productId: id, kind: "PRODUCT" } });
+          await tx.product.delete({ where: { id } });
+          return { deleted: true as const };
+        } else {
+          // Archive instead of delete to preserve invoice references
+          await tx.media.deleteMany({ where: { productId: id, kind: "PRODUCT" } });
+          const archivedName = `${updated.name} [ARCHIVED ${Date.now()}]`;
+          const existingProps = (updated.properties ?? {}) as any;
+          const newProps = (existingProps && typeof existingProps === 'object')
+            ? { ...existingProps, archived: true }
+            : { archived: true };
+          const archived = await tx.product.update({
+            where: { id },
+            data: {
+              name: archivedName,
+              stockQty: 0,
+              // Mark archived in JSON properties while preserving existing keys
+              properties: newProps as any,
+            },
+            include: { images: true },
+          });
+          return { archived: true as const, product: archived };
+        }
+      }
+
+      return { product: updated } as const;
     });
-    return NextResponse.json({ product: updated });
+
+    if ('deleted' in result && result.deleted) {
+      return NextResponse.json({ deleted: true });
+    }
+    return NextResponse.json(result);
   } catch (err) {
     console.error("/api/products PATCH error", err);
     return NextResponse.json({ error: "Update failed" }, { status: 500 });
@@ -118,6 +172,7 @@ const CreateProductSchema = z.object({
   imageBlurDataUrl: z.string().min(1).optional(),
   // optional free-form properties at creation
   properties: z.record(z.string(), z.any()).optional(),
+  type: z.enum(["COMPANY","OTHER"]).optional(),
 });
 
 export async function POST(req: Request) {
@@ -137,7 +192,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid data", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { name, capacity, price, stockQty, notes, imageUrl, imageBlurDataUrl, properties } = parsed.data;
+  const { name, capacity, price, stockQty, notes, imageUrl, imageBlurDataUrl, properties, type } = parsed.data;
   try {
     const created = await prisma.product.create({
       data: {
@@ -146,7 +201,7 @@ export async function POST(req: Request) {
         price,
         stockQty,
         ...(notes ? { notes } : {}),
-        ...(properties ? { properties: properties as any } : {}),
+        ...(properties || type ? { properties: { ...(properties as any || {}), ...(type ? { type } : {}) } as any } : {}),
         images: imageUrl ? { create: [{ url: imageUrl, kind: "PRODUCT", blurDataUrl: imageBlurDataUrl || undefined }] } : undefined,
       },
       include: { images: true },

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 type Media = { id: string; url: string; blurDataUrl?: string };
@@ -108,6 +108,9 @@ type RecentItem = {
 export default function ProductDetailPage() {
   const params = useParams();
   const id = (params as any)?.id as string | undefined;
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const editMode = (searchParams?.get("edit") || "") === "1";
   const { data: session } = useSession();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +124,7 @@ export default function ProductDetailPage() {
   const [featuresText, setFeaturesText] = useState<string>("");
   const [usageText, setUsageText] = useState<string>("");
   const [compositionText, setCompositionText] = useState<string>("");
+  const [editType, setEditType] = useState<"COMPANY"|"OTHER">("COMPANY");
 
   // @ts-expect-error custom role on session
   const role: string | undefined = session?.user?.role;
@@ -148,6 +152,14 @@ export default function ProductDetailPage() {
         setCompositionText(typeof propsObj.composition === 'string' ? propsObj.composition : "");
         setItems(json.recentItems || []);
         setActiveIdx(0);
+        // Initialize edit fields
+        setEditName(json.product?.name || "");
+        setEditCapacity(json.product?.capacity || "");
+        setEditPrice(String(json.product?.price ?? ""));
+        setEditStock(typeof json.product?.stockQty === 'number' ? json.product.stockQty : 0);
+        setEditImageUrl(json.product?.images?.[0]?.url || "");
+        const t = (json.product?.properties as any)?.type;
+        if (t === 'OTHER' || t === 'COMPANY') setEditType(t);
       } catch (e: any) {
         setError(e?.message || "Server error");
       } finally {
@@ -155,6 +167,14 @@ export default function ProductDetailPage() {
       }
     })();
   }, [id]);
+
+  // Edit form state (main fields)
+  const [editName, setEditName] = useState<string>("");
+  const [editCapacity, setEditCapacity] = useState<string>("");
+  const [editPrice, setEditPrice] = useState<string>("");
+  const [editStock, setEditStock] = useState<number>(0);
+  const [editImageUrl, setEditImageUrl] = useState<string>("");
+  const [savingMain, setSavingMain] = useState(false);
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
@@ -207,6 +227,72 @@ export default function ProductDetailPage() {
               <div className="font-semibold mb-4">{Number(product.price).toLocaleString(undefined,{style:"currency",currency:"EGP"})}</div>
               {canViewStock && (
                 <div className="text-sm mb-2">المتوفر بالمخزون: {product.stockQty}</div>
+              )}
+              {canEdit && editMode && (
+                <div className="mt-4 space-y-2">
+                  <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200 p-2 text-xs">
+                    عند ضبط المخزون إلى 0 سيتم حذف المنتج تلقائياً إذا لم تكن هناك فواتير مرتبطة به.
+                  </div>
+                  <label className="block text-sm">اسم المنتج</label>
+                  <input value={editName} onChange={(e)=>setEditName(e.target.value)} className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-1.5 text-sm" />
+                  <label className="block text-sm">السعة</label>
+                  <input value={editCapacity} onChange={(e)=>setEditCapacity(e.target.value)} className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-1.5 text-sm" />
+                  <label className="block text-sm">السعر</label>
+                  <input value={editPrice} onChange={(e)=>setEditPrice(e.target.value)} type="number" step="0.01" className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-1.5 text-sm" />
+                  <label className="block text-sm">المخزون</label>
+                  <input value={editStock} onChange={(e)=>setEditStock(Number(e.target.value)||0)} type="number" min={0} className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-1.5 text-sm" />
+                  <label className="block text-sm">نوع المنتج</label>
+                  <select value={editType} onChange={(e)=>setEditType((e.target.value as any) || 'COMPANY')} className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-1.5 text-sm">
+                    <option value="COMPANY">منتج الشركة</option>
+                    <option value="OTHER">أخرى</option>
+                  </select>
+                  <label className="block text-sm">رابط الصورة الرئيسية</label>
+                  <input value={editImageUrl} onChange={(e)=>setEditImageUrl(e.target.value)} className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-1.5 text-sm" placeholder="https://..." />
+                  <div className="pt-1 flex items-center gap-2">
+                    <button
+                      disabled={savingMain}
+                      onClick={async()=>{
+                        if (!id) return;
+                        setSavingMain(true);
+                        setError(null);
+                        try {
+                          const body: any = { id };
+                          if (product.name !== editName) body.name = editName.trim();
+                          if (product.capacity !== editCapacity) body.capacity = editCapacity.trim();
+                          const priceNum = Number(editPrice);
+                          if (!Number.isNaN(priceNum) && Number(product.price) !== priceNum) body.price = priceNum;
+                          if (product.stockQty !== editStock) body.stockQty = editStock;
+                          if ((product.images?.[0]?.url || "") !== editImageUrl) body.imageUrl = editImageUrl.trim() ? editImageUrl.trim() : null;
+                          const currentType = (product.properties as any)?.type;
+                          if (currentType !== editType) body.type = editType;
+                          const res = await fetch("/api/products", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+                          const json = await res.json();
+                          if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+                          if (json?.deleted || json?.archived) {
+                            router.replace("/");
+                            return;
+                          }
+                          if (json?.product) {
+                            setProduct(json.product);
+                            setEditName(json.product.name);
+                            setEditCapacity(json.product.capacity);
+                            setEditPrice(String(json.product.price));
+                            setEditStock(json.product.stockQty);
+                            setEditImageUrl(json.product.images?.[0]?.url || "");
+                            const nt = (json.product.properties as any)?.type;
+                            if (nt === 'OTHER' || nt === 'COMPANY') setEditType(nt);
+                          }
+                        } catch (e: any) {
+                          setError(e?.message || "Failed to save product");
+                        } finally {
+                          setSavingMain(false);
+                        }
+                      }}
+                      className="rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-4 py-2 text-sm"
+                    >{savingMain? "جارٍ الحفظ…" : "حفظ التعديلات"}</button>
+                    <button onClick={()=>router.replace(`/products/${id}`)} className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-2 text-sm">إغلاق التعديل</button>
+                  </div>
+                </div>
               )}
               <div className="mt-3">
                 <div className="text-sm text-muted-foreground mb-1">ملاحظات</div>

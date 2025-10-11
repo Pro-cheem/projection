@@ -72,9 +72,8 @@ export default function InvoiceForm() {
           const validCustomers = (cusRes.customers || []).filter((c: any) => c && c.id && c.name);
           setCustomers(validCustomers);
           
-          if (validProducts.length === 0) {
-            setError('No products available. Please add products first.');
-          }
+          // ملاحظة: نُبقي النموذج قابلًا للاستخدام حتى لو لم توجد منتجات،
+          // للسماح بإنشاء فواتير "تحصيل فقط" بدون أصناف.
         }
       } catch (e: any) {
         if (mounted) setError(e.message || "Failed to load data");

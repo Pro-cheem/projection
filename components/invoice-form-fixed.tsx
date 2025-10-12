@@ -220,32 +220,34 @@ export default function InvoiceForm() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Serial</label>
-          <input 
-            value={serial} 
-            onChange={e => setSerial(e.target.value)} 
-            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" 
+          <label className="block text-sm font-medium mb-1">رقم الفاتورة</label>
+          <input
+            value={serial}
+            onChange={e => setSerial(e.target.value)}
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
+            placeholder="رقم الفاتورة"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Date</label>
-          <input 
-            type="date" 
-            value={date} 
-            onChange={e => setDate(e.target.value)} 
-            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" 
+          <label className="block text-sm font-medium mb-1">التاريخ</label>
+          <input
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Collection (EGP)</label>
-          <input 
-            type="number" 
-            min={0} 
-            value={collection} 
-            onChange={e => setCollection(Number(e.target.value))} 
-            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" 
+          <label className="block text-sm font-medium mb-1">المبلغ المحصل (جنيه)</label>
+          <input
+            type="number"
+            min={0}
+            value={collection}
+            onChange={e => setCollection(Number(e.target.value))}
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
+            placeholder="المبلغ المحصل"
           />
         </div>
       </div>

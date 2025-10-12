@@ -278,46 +278,59 @@ export default function InvoiceForm() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1">Serial</label>
-          <input 
-            value={serial} 
-            onChange={e => setSerial(e.target.value)} 
-            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" 
+          <input
+            value={serial}
+            onChange={e => setSerial(e.target.value)}
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
+            placeholder="رقم الفاتورة"
           />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Date</label>
-          <input 
-            type="date" 
-            value={date} 
-            onChange={e => setDate(e.target.value)} 
-            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" 
+          <input
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
           />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Collection (EGP)</label>
-          <input 
-            type="number" 
-            min={0} 
-            value={collection} 
-            onChange={e => setCollection(Number(e.target.value))} 
-            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" 
+          <input
+            type="number"
+            min={0}
+            value={collection}
+            onChange={e => setCollection(Number(e.target.value))}
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
+            placeholder="المبلغ المحصل"
           />
         </div>
       </div>
 
       <div>
         <label className="block text-sm font-medium mb-1">Customer</label>
-        <div className="flex gap-2">
-          <select value={customerId} onChange={e => setCustomerId(e.target.value)} className="flex-1 rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2">
-            <option value="">Select a customer…</option>
+        <div className="grid grid-cols-1 gap-2">
+          <select
+            value={customerId}
+            onChange={e => setCustomerId(e.target.value)}
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
+          >
+            <option value="">اختر العميل...</option>
             {customers.map(c => (
               <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ""}</option>
             ))}
           </select>
-          <button type="button" onClick={createCustomer} disabled={addingCustomer || !newCustomer.name.trim()} className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-2 text-sm">Add</button>
+          <button
+            type="button"
+            onClick={createCustomer}
+            disabled={addingCustomer || !newCustomer.name.trim()}
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 px-3 py-2 text-sm bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 disabled:opacity-50"
+          >
+            إضافة عميل جديد
+          </button>
         </div>
         {selectedCustomer && (
           <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
@@ -335,15 +348,30 @@ export default function InvoiceForm() {
             </div>
           </div>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
-          <input placeholder="New customer name" value={newCustomer.name} onChange={e => setNewCustomer(v => ({ ...v, name: e.target.value }))} className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
-          <input placeholder="Email (optional)" value={newCustomer.email} onChange={e => setNewCustomer(v => ({ ...v, email: e.target.value }))} className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
-          <input placeholder="Phone (optional)" value={newCustomer.phone} onChange={e => setNewCustomer(v => ({ ...v, phone: e.target.value }))} className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
+        <div className="grid grid-cols-1 gap-2 mt-2">
+          <input
+            placeholder="اسم العميل الجديد"
+            value={newCustomer.name}
+            onChange={e => setNewCustomer(v => ({ ...v, name: e.target.value }))}
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
+          />
+          <input
+            placeholder="البريد الإلكتروني (اختياري)"
+            value={newCustomer.email}
+            onChange={e => setNewCustomer(v => ({ ...v, email: e.target.value }))}
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
+          />
+          <input
+            placeholder="رقم الهاتف (اختياري)"
+            value={newCustomer.phone}
+            onChange={e => setNewCustomer(v => ({ ...v, phone: e.target.value }))}
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
+          />
         </div>
       </div>
 
       <div>
-        <div className="grid grid-cols-12 gap-2 font-medium text-sm mb-1">
+        <div className="hidden sm:grid grid-cols-12 gap-2 font-medium text-sm mb-1">
           <div className="col-span-5">Product</div>
           <div className="col-span-2">Capacity</div>
           <div className="col-span-2">Price (EGP)</div>
@@ -351,34 +379,68 @@ export default function InvoiceForm() {
           <div className="col-span-1 text-right">Total</div>
         </div>
         {lines.map((l, idx) => (
-          <div key={idx} className="grid grid-cols-12 gap-2 items-center py-1">
-            <div className="col-span-5">
-              <select value={l.productId} onChange={e => onProductChange(idx, e.target.value)} className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2">
-                <option value="">Select product…</option>
-                {products.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-span-2 text-sm text-muted-foreground">{l.capacity || "—"}</div>
-            <div className="col-span-2">
-              <input type="number" min={0} value={l.price} onChange={e => updateLine(idx, { price: Number(e.target.value) })} className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
-            </div>
-            <div className="col-span-2">
-              <input type="number" min={1} step={1} value={l.quantity}
-                onChange={e => updateLine(idx, { quantity: Math.max(1, Math.floor(Number(e.target.value) || 0)) })}
-                className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
-            </div>
-            <div className="col-span-1 text-right text-sm">{(l.price * (l.quantity || 0)).toLocaleString(undefined, { style: "currency", currency: "EGP" })}</div>
-            <div className="col-span-12 text-right">
+          <div key={idx} className="mb-4 p-3 border border-black/10 dark:border-white/10 rounded-lg">
+            <div className="grid grid-cols-1 gap-2">
+              <div>
+                <label className="block text-sm font-medium mb-1">المنتج</label>
+                <select
+                  value={l.productId}
+                  onChange={e => onProductChange(idx, e.target.value)}
+                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
+                >
+                  <option value="">اختر المنتج...</option>
+                  {products.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium">السعة:</span> {l.capacity || "—"}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">السعر (جنيه)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={l.price}
+                  onChange={e => updateLine(idx, { price: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">الكمية</label>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={l.quantity}
+                  onChange={e => updateLine(idx, { quantity: Math.max(1, Math.floor(Number(e.target.value) || 0)) })}
+                  className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
+                />
+              </div>
+              <div className="text-right text-sm font-semibold">
+                الإجمالي: {(l.price * (l.quantity || 0)).toLocaleString(undefined, { style: "currency", currency: "EGP" })}
+              </div>
               {lines.length > 1 && (
-                <button type="button" onClick={() => removeLine(idx)} className="text-xs text-red-600">Remove</button>
+                <button
+                  type="button"
+                  onClick={() => removeLine(idx)}
+                  className="w-full text-sm text-red-600 hover:text-red-700 py-2"
+                >
+                  حذف هذا المنتج
+                </button>
               )}
             </div>
           </div>
         ))}
         <div className="mt-2">
-          <button type="button" onClick={addLine} className="rounded-md border border-black/10 dark:border-white/10 px-3 py-1.5 text-sm">Add Line</button>
+          <button
+            type="button"
+            onClick={addLine}
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 px-3 py-2 text-sm bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+          >
+            إضافة منتج آخر
+          </button>
         </div>
       </div>
 
@@ -395,22 +457,31 @@ export default function InvoiceForm() {
         )}
       </div>
 
-      <div className="flex gap-3 items-center flex-wrap">
-        <button type="button" onClick={submitInvoice} disabled={saving} className="rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2">{saving?"Saving invoice...":"Save Invoice"}</button>
-        {submitStatus && <span className="text-sm text-emerald-600">{submitStatus}</span>}
-        {error && <span className="text-sm text-red-600">{error}</span>}
-        {lastSaved && (
-          <button type="button" onClick={printInvoice} className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-2 text-sm">Print Invoice</button>
+      <div className="flex flex-col gap-3 items-stretch">
+        <button
+          type="button"
+          onClick={submitInvoice}
+          disabled={saving}
+          className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-3 text-base font-semibold"
+        >
+          {saving ? "جارٍ حفظ الفاتورة..." : "حفظ الفاتورة"}
+        </button>
+        {submitStatus && <span className="text-sm text-emerald-600 text-center">{submitStatus}</span>}
+        {error && <span className="text-sm text-red-600 text-center">{error}</span>}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {lastSaved && (
+            <button type="button" onClick={printInvoice} className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-2 text-sm">طباعة الفاتورة</button>
+          )}
+          <a href="/journal" className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-2 text-sm text-center">سجل الفواتير</a>
+          <a href="/stock" className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-2 text-sm text-center">المخزون</a>
+        </div>
+        {error && (
+          <details className="mt-2 text-xs text-muted-foreground">
+            <summary className="cursor-pointer">عرض التفاصيل الفنية</summary>
+            <pre className="whitespace-pre-wrap break-words mt-2">{JSON.stringify({ serial, date, customerId, collection, lines }, null, 2)}</pre>
+          </details>
         )}
-        <a href="/journal" className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-2 text-sm">Open Journal</a>
-        <a href="/stock" className="rounded-lg border border-black/10 dark:border-white/10 px-3 py-2 text-sm">Open Stock</a>
       </div>
-      {error && (
-        <details className="mt-2 text-xs text-muted-foreground">
-          <summary>Show debug</summary>
-          <pre className="whitespace-pre-wrap break-words">{JSON.stringify({ serial, date, customerId, collection, lines }, null, 2)}</pre>
-        </details>
-      )}
     </div>
   );
 }

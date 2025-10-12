@@ -167,16 +167,28 @@ export default function CustomersPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10">
+    <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">العملاء</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          إدارة العملاء ومتابعة حساباتهم
+        </p>
+      </div>
+
       {(role === 'ADMIN' || role === 'MANAGER') && (
-        <div className="rounded-xl border border-black/10 dark:border-white/10 p-6 bg-white dark:bg-zinc-900 mb-8">
-          <div className="flex items-center justify-between gap-4 mb-4">
-            <h2 className="text-lg font-semibold">أفضل 10 عملاء (المسحوبات مقابل التحصيل)</h2>
-            <div className="flex items-center gap-2 text-sm">
-              <input type="date" value={topFrom} onChange={(e)=>setTopFrom(e.target.value)} className="rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-1" />
-              <span>إلى</span>
-              <input type="date" value={topTo} onChange={(e)=>setTopTo(e.target.value)} className="rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-1" />
-              <button onClick={loadTop} className="rounded bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5">تطبيق</button>
+        <div className="rounded-xl border border-black/10 dark:border-white/10 p-4 bg-white dark:bg-zinc-900 mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+            <h2 className="text-lg font-semibold">أفضل 10 عملاء</h2>
+            <div className="flex flex-col sm:flex-row items-center gap-2 text-sm">
+              <div className="flex items-center gap-2">
+                <label className="text-sm">من:</label>
+                <input type="date" value={topFrom} onChange={(e)=>setTopFrom(e.target.value)} className="rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-1 text-sm" />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm">إلى:</label>
+                <input type="date" value={topTo} onChange={(e)=>setTopTo(e.target.value)} className="rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-1 text-sm" />
+              </div>
+              <button onClick={loadTop} className="rounded bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-sm">تطبيق</button>
             </div>
           </div>
           {topError && <div className="mb-3 text-sm text-red-600">{topError}</div>}
@@ -187,93 +199,112 @@ export default function CustomersPage() {
           )}
         </div>
       )}
-      <div className="flex items-center justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-semibold">Customers</h1>
-        <a href="/invoice" className="text-sm underline">Back to Invoice</a>
-      </div>
 
-      <div className="rounded-xl border border-black/10 dark:border-white/10 p-6 bg-white dark:bg-zinc-900 mb-8">
-        <h2 className="font-medium mb-3">Add Customer</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <input placeholder="Name" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
-          <input placeholder="Email (optional)" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
-          <input placeholder="Phone (optional)" value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
-          <button onClick={onCreate} disabled={submitting || !form.name.trim()} className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm">{submitting?"Saving…":"Save"}</button>
+      <div className="rounded-xl border border-black/10 dark:border-white/10 p-4 bg-white dark:bg-zinc-900 mb-6">
+        <h2 className="font-medium mb-3">إضافة عميل جديد</h2>
+        <div className="grid grid-cols-1 gap-3">
+          <input
+            placeholder="اسم العميل"
+            value={form.name}
+            onChange={e=>setForm(f=>({...f,name:e.target.value}))
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
+          />
+          <input
+            placeholder="البريد الإلكتروني (اختياري)"
+            value={form.email}
+            onChange={e=>setForm(f=>({...f,email:e.target.value}))
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
+          />
+          <input
+            placeholder="رقم الهاتف (اختياري)"
+            value={form.phone}
+            onChange={e=>setForm(f=>({...f,phone:e.target.value}))
+            className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
+          />
+          <button
+            onClick={onCreate}
+            disabled={submitting || !form.name.trim()}
+            className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-base font-semibold disabled:opacity-50"
+          >
+            {submitting?"جارٍ الحفظ…":"حفظ العميل"}
+          </button>
         </div>
         {error && <div className="mt-2 text-sm text-red-600">{error}</div>}
       </div>
 
       <div className="rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 overflow-hidden">
-        <div className="grid grid-cols-12 gap-2 px-4 py-3 text-sm font-medium border-b border-black/10 dark:border-white/10">
-          <div className="col-span-3">Name</div>
-          <div className="col-span-4">Contact</div>
-          <div className="col-span-3 text-right">Total Debt</div>
-          <div className="col-span-2 text-right">Actions</div>
+        <div className="hidden sm:grid grid-cols-12 gap-2 px-4 py-3 text-sm font-medium border-b border-black/10 dark:border-white/10">
+          <div className="col-span-3">الاسم</div>
+          <div className="col-span-4">بيانات الاتصال</div>
+          <div className="col-span-3 text-right">إجمالي الدين</div>
+          <div className="col-span-2 text-right">الإجراءات</div>
         </div>
         {loading ? (
-          <div className="p-4 text-sm text-muted-foreground">Loading…</div>
+          <div className="p-4 text-sm text-muted-foreground">جارٍ التحميل…</div>
         ) : customers.length === 0 ? (
-          <div className="p-4 text-sm text-muted-foreground">No customers</div>
+          <div className="p-4 text-sm text-muted-foreground">لا يوجد عملاء</div>
         ) : (
           customers.map(c => (
-            <div key={c.id} className="grid grid-cols-12 gap-2 px-4 py-2 border-b border-black/5 dark:border-white/5 items-center">
-              <div className="col-span-3 text-sm">
-                <a href={`/customers/${c.id}`} className="underline hover:no-underline">{c.name}</a>
+            <div key={c.id} className="p-4 border-b border-black/5 dark:border-white/5 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-center">
+              <div className="sm:col-span-3 text-sm mb-2 sm:mb-0">
+                <a href={`/customers/${c.id}`} className="underline hover:no-underline font-medium">{c.name}</a>
                 <div className="text-xs text-muted-foreground mt-0.5">
                   {editingEmailId===c.id && (role === 'ADMIN' || role === 'MANAGER') ? (
-                    <div className="flex items-center gap-1">
+                    <div className="flex flex-col gap-1 mt-2">
                       <input
                         value={editingEmailValue}
                         onChange={e=>setEditingEmailValue(e.target.value)}
-                        className="rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-0.5 text-xs"
+                        className="rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-1 text-xs w-full"
                         placeholder="user@projection.com"
                       />
-                      <button onClick={()=>saveCustomerEmail(c.id)} className="rounded bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-0.5 text-xs">Save</button>
-                      <button onClick={()=>{setEditingEmailId(null); setEditingEmailValue("");}} className="rounded border border-black/10 dark:border-white/10 px-2 py-0.5 text-xs">Cancel</button>
+                      <div className="flex gap-1">
+                        <button onClick={()=>saveCustomerEmail(c.id)} className="rounded bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 text-xs">حفظ</button>
+                        <button onClick={()=>{setEditingEmailId(null); setEditingEmailValue("");}} className="rounded border border-black/10 dark:border-white/10 px-2 py-1 text-xs">إلغاء</button>
+                      </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <span>user:</span>
-                      <span className="font-mono">{c.email || '-'}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs">المستخدم:</span>
+                      <span className="font-mono text-xs">{c.email || '-'}</span>
                       {(role === 'ADMIN' || role === 'MANAGER') && (
-                        <button onClick={()=>{setEditingEmailId(c.id); setEditingEmailValue(String(c.email||''));}} className="text-xs underline">Edit</button>
+                        <button onClick={()=>{setEditingEmailId(c.id); setEditingEmailValue(String(c.email||''));}} className="text-xs underline">تعديل</button>
                       )}
                     </div>
                   )}
                 </div>
               </div>
-              <div className="col-span-4 text-sm">{c.phone ? `${c.phone}` : ""}</div>
-              <div className="col-span-3 text-right text-sm">{Number(c.totalDebt).toLocaleString(undefined,{style:"currency",currency:"EGP"})}</div>
-              <div className="col-span-2 text-right">
-                <button onClick={()=>createUserForCustomer(c.id)} disabled={creatingUserId===c.id} className="rounded border border-black/10 dark:border-white/10 px-2 py-1 text-xs">
-                  {creatingUserId===c.id? 'Creating…' : 'Create User'}
+              <div className="sm:col-span-4 text-sm mb-2 sm:mb-0">{c.phone ? `${c.phone}` : "—"}</div>
+              <div className="sm:col-span-3 text-right text-sm mb-2 sm:mb-0 font-medium">{Number(c.totalDebt).toLocaleString(undefined,{style:"currency",currency:"EGP"})}</div>
+              <div className="sm:col-span-2 text-right">
+                <button onClick={()=>createUserForCustomer(c.id)} disabled={creatingUserId===c.id} className="rounded border border-black/10 dark:border-white/10 px-2 py-1 text-xs mb-2 w-full">
+                  {creatingUserId===c.id? 'جارٍ الإنشاء…' : 'إنشاء مستخدم'}
                 </button>
                 {userCreatedInfo && userCreatedInfo.customerId===c.id && (
-                  <div className="mt-1 text-xs text-right">
-                    <div className="text-emerald-700 dark:text-emerald-300">User created</div>
-                    <div className="font-mono">Email: {userCreatedInfo.email}</div>
-                    <div className="font-mono">Password: {userCreatedInfo.password}</div>
+                  <div className="text-xs text-right bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded">
+                    <div className="text-emerald-700 dark:text-emerald-300 font-medium">تم إنشاء المستخدم</div>
+                    <div className="font-mono">البريد: {userCreatedInfo.email}</div>
+                    <div className="font-mono">كلمة المرور: {userCreatedInfo.password}</div>
                   </div>
                 )}
                 {(role === 'ADMIN' || role === 'MANAGER') && (
-                  <div className="mt-2 text-xs text-right space-y-1">
-                    <div className="flex items-center gap-1 justify-end">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1">
                       <input
                         type="text"
                         value={settingPwdId===c.id ? pwdValue : (lastSetPwd && lastSetPwd.customerId===c.id ? lastSetPwd.password : pwdValue)}
                         onChange={e=>{ if (settingPwdId===c.id || !lastSetPwd || lastSetPwd.customerId!==c.id) setPwdValue(e.target.value); }}
-                        placeholder="Set new password"
-                        className="rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-0.5 text-xs min-w-[12ch]"
+                        placeholder="كلمة مرور جديدة"
+                        className="rounded border border-black/10 dark:border-white/10 bg-transparent px-2 py-1 text-xs min-w-[12ch] flex-1"
                       />
-                      <button onClick={()=>setCustomerPassword(c.id)} disabled={settingPwdId===c.id} className="rounded bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-0.5 text-xs">
-                        {settingPwdId===c.id ? 'Saving…' : 'Set Password'}
-                      </button>
-                      <button onClick={()=>setCustomerPassword(c.id, genPassword())} disabled={settingPwdId===c.id} className="rounded border border-black/10 dark:border-white/10 px-2 py-0.5 text-xs">
-                        Generate
+                      <button onClick={()=>setCustomerPassword(c.id)} disabled={settingPwdId===c.id} className="rounded bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 text-xs">
+                        {settingPwdId===c.id ? 'حفظ…' : 'حفظ'}
                       </button>
                     </div>
+                    <button onClick={()=>setCustomerPassword(c.id, genPassword())} disabled={settingPwdId===c.id} className="rounded border border-black/10 dark:border-white/10 px-2 py-1 text-xs w-full">
+                      إنشاء كلمة مرور عشوائية
+                    </button>
                     {lastSetPwd && lastSetPwd.customerId===c.id && (
-                      <div className="text-emerald-700 dark:text-emerald-300">Last set password: <span className="font-mono">{lastSetPwd.password}</span></div>
+                      <div className="text-emerald-700 dark:text-emerald-300 text-xs">آخر كلمة مرور: <span className="font-mono">{lastSetPwd.password}</span></div>
                     )}
                   </div>
                 )}

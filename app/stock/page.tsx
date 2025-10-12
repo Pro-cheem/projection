@@ -25,7 +25,7 @@ export default function StockPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", capacity: "", price: "", stockQty: "", imageUrl: "", composition: "", features: "", usage: "" });
+  const [form, setForm] = useState({ name: "", capacity: "", price: "", stockQty: "", imageUrl: "", composition: "", features: "", usage: "", type: "COMPANY" });
   const [submitting, setSubmitting] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [propsDraft, setPropsDraft] = useState<Record<string, { composition: string; features: string; usage: string }>>({});
@@ -99,7 +99,7 @@ export default function StockPage() {
 
   useEffect(() => { load(); }, []);
 
-  async function onUpdate(p: Product, patch: { name?: string; capacity?: string; price?: number; stockQty?: number; notes?: string | null }) {
+  async function onUpdate(p: Product, patch: { name?: string; capacity?: string; price?: number; stockQty?: number; notes?: string | null; properties?: Record<string, any> }) {
     try {
       const res = await fetch("/api/products", {
         method: "PATCH",
@@ -132,6 +132,7 @@ export default function StockPage() {
           price: Number(form.price),
           stockQty: Number(form.stockQty || 0),
           imageUrl: form.imageUrl || undefined,
+          type: form.type,
           properties: (() => {
             const obj: Record<string,string> = {};
             if (form.composition.trim()) obj["composition"] = form.composition.trim();
@@ -145,7 +146,7 @@ export default function StockPage() {
       let data: any = null;
       try { data = resText ? JSON.parse(resText) : null; } catch {}
       if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
-      setForm({ name: "", capacity: "", price: "", stockQty: "", imageUrl: "", composition: "", features: "", usage: "" });
+      setForm({ name: "", capacity: "", price: "", stockQty: "", imageUrl: "", composition: "", features: "", usage: "", type: "COMPANY" });
       await load();
       toast({ title: "تمت الإضافة", description: "تم إضافة المنتج بنجاح", variant: "success" });
     } catch (e: any) {
@@ -171,7 +172,10 @@ export default function StockPage() {
           <input placeholder="Capacity" value={form.capacity} onChange={e=>setForm(f=>({...f,capacity:e.target.value}))} className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
           <input placeholder="Price" type="number" value={form.price} onChange={e=>setForm(f=>({...f,price:e.target.value}))} className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
           <input placeholder="Stock Qty" type="number" value={form.stockQty} onChange={e=>setForm(f=>({...f,stockQty:e.target.value}))} className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
-          <input placeholder="Image URL (optional)" value={form.imageUrl} onChange={e=>setForm(f=>({...f,imageUrl:e.target.value}))} className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2" />
+          <select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))} className="rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2">
+            <option value="COMPANY">منتج الشركة</option>
+            <option value="OTHER">منتج آخر</option>
+          </select>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
           <div>
@@ -284,6 +288,28 @@ export default function StockPage() {
                     />
                   ) : (
                     <p className="text-sm text-muted-foreground">Capacity: {p.capacity}</p>
+                  )}
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs text-muted-foreground">نوع المنتج</div>
+                  {canEdit ? (
+                    <select
+                      value={(p as any).properties?.type || 'COMPANY'}
+                      className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-2 py-1 text-sm"
+                      onChange={(e)=>{
+                        const val = e.target.value;
+                        const currentProps = (p as any).properties || {};
+                        const newProps = { ...currentProps, type: val };
+                        onUpdate(p, { properties: newProps });
+                      }}
+                    >
+                      <option value="COMPANY">منتج الشركة</option>
+                      <option value="OTHER">منتج آخر</option>
+                    </select>
+                  ) : (
+                    <div className="text-sm">
+                      {((p as any).properties?.type) === 'COMPANY' ? 'منتج الشركة' : 'منتج آخر'}
+                    </div>
                   )}
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-2 items-center">

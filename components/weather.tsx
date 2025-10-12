@@ -1,40 +1,35 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Droplet, Thermometer, Wind, Cloud, Sun, CloudRain, CloudSnow, CloudSun, Cloudy, SunDim } from 'lucide-react';
+import { Droplets, Wind, Cloud, Sun, CloudRain, CloudSnow, CloudSun } from 'lucide-react';
 
 type WeatherData = {
   temp: number;
   humidity: number;
   wind_speed: number;
-  weather: {
+  weather: Array<{
     main: string;
     description: string;
     icon: string;
-  }[];
+    id: number;
+  }>;
 };
 
-const getWeatherIcon = (iconCode: string) => {
-  const iconMap: Record<string, JSX.Element> = {
-    '01d': <Sun className="w-6 h-6 text-yellow-400" />,
-    '01n': <SunDim className="w-6 h-6 text-yellow-400" />,
-    '02d': <CloudSun className="w-6 h-6 text-yellow-400" />,
-    '02n': <CloudSun className="w-6 h-6 text-yellow-400" />,
-    '03d': <Cloud className="w-6 h-6 text-gray-400" />,
-    '03n': <Cloud className="w-6 h-6 text-gray-400" />,
-    '04d': <Cloudy className="w-6 h-6 text-gray-500" />,
+const Weather = ({ city }: { city?: string }) => {
+  const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchWeather = async () => {
       try {
+        const CITY = city || 'Cairo,Egypt';
         const response = await fetch(`/api/weather?city=${encodeURIComponent(CITY)}`);
-        
+
         if (!response.ok) {
           throw new Error('فشل في جلب بيانات الطقس');
         }
-        
+
         const data = await response.json();
         setWeather(data);
       } catch (err) {
@@ -49,7 +44,7 @@ const getWeatherIcon = (iconCode: string) => {
     const interval = setInterval(fetchWeather, 5 * 60 * 1000); // تحديث كل 5 دقائق
 
     return () => clearInterval(interval);
-  }, []);
+  }, [city]);
 
   const getWeatherIcon = (weatherId: number) => {
     if (weatherId >= 200 && weatherId < 300) {
@@ -81,10 +76,10 @@ const getWeatherIcon = (iconCode: string) => {
     return null; // إخفاء المكون في حالة الخطأ
   }
 
-  const temperature = Math.round(weather.main.temp);
+  const temperature = Math.round(weather.temp);
   const weatherId = weather.weather[0].id;
-  const humidity = weather.main.humidity;
-  const windSpeed = Math.round(weather.wind.speed * 3.6); // تحويل من م/ث إلى كم/ساعة
+  const humidity = weather.humidity;
+  const windSpeed = Math.round(weather.wind_speed * 3.6); // تحويل من م/ث إلى كم/ساعة
 
   return (
     <div className="flex items-center gap-4">

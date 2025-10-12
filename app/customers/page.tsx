@@ -206,19 +206,19 @@ export default function CustomersPage() {
           <input
             placeholder="اسم العميل"
             value={form.name}
-            onChange={e=>setForm(f=>({...f,name:e.target.value}))
+            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
           />
           <input
             placeholder="البريد الإلكتروني (اختياري)"
             value={form.email}
-            onChange={e=>setForm(f=>({...f,email:e.target.value}))
+            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
             className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
           />
           <input
             placeholder="رقم الهاتف (اختياري)"
             value={form.phone}
-            onChange={e=>setForm(f=>({...f,phone:e.target.value}))
+            onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
             className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2 text-base"
           />
           <button
